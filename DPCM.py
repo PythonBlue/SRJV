@@ -279,9 +279,9 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
     sampleStart = 0
     smplLoop = int(smplLoop)
     smplEnd = int(smplEnd)
-    #if smplLoop == 0 and smplEnd == 0:
-        #smplLoop = sampleCount - 2
-        #smplEnd = sampleCount - 1
+    if smplLoop == 0 and smplEnd == 0:
+        smplLoop = sampleCount - 2
+        smplEnd = sampleCount - 1
     
     coefLen = math.ceil((smplEnd + 1) / 32)
 	
