@@ -1,6 +1,6 @@
 # SRJV
  
-## INFO
+## Info
 
 This toolkit should make it feasible to import custom samples into an SR-JV80 ROM image. To make full use of this, it's ideal you also have a way to burn the created images onto an SR-JV80 card. The recommendation is the ROMulator tool by Sector101:
 
@@ -10,11 +10,11 @@ With enough further hacking, it is possible to load the imported multisamples as
 
 In addition, VERY experimental patch support is also included. As it is now, the format of the ROM suggests it usually has two different patch tables per card: what's seemingly required is the patch data that's directly compatible for, namely, the JV-80, the other known compatible patches being for the JV-2080 and, famously for SR-JV80-04, the JD-990. Currently the way patch importing works assumes any of these three models, though the creator does not guarantee the required SysEx for the JV80 and JD990 will be identical in the ROM due to inability to verify with such synths.
 
-## PREREQUESITES
+## Pre-requisites
 
 * Python 3
 
-## ADDITIONAL NOTES ABOUT SAMPLE IMPORTING
+## Additional Notes About Sample Importing
 
 1. Total filesize needs to conform to the size of the ROM image, meaning ideally your sample set should be 15 MB in 16-bit PCM audio or less. The remaining space is needed for the definition tables and headers.
 
@@ -22,7 +22,7 @@ In addition, VERY experimental patch support is also included. As it is now, the
 
 3. All imported audio needs to be in mono with a bitrate of 16-bit, 24-bit, or 32-bit linear PCM.
 
-## USAGE
+## Usage
 
 1. Compile all of the samples you wish to use, accompanied by an SFZ file for the sake of the multisample entries.
 
@@ -43,6 +43,6 @@ In addition, VERY experimental patch support is also included. As it is now, the
 The resulting file for loading into a card via ROMulator should now be available for testing. If you're savvy enough to convert to SRX ROM's on your own as well, it's recommended you load an SRX conversion based on the additionally-created "Result.bin" into RolandCloud SRX-series VST's first in case of audio output issues, which is a very real possibility with DC offset in particular, knowing the nature of DPCM audio. If this is not an option, be sure to also check the output of the scripts, turning on verbose mode as needed in order to determine problematic samples.
 
 
-## FOOTNOTES
+## Footnotes
 
 Additional credit goes to https://github.com/hackyourlife for the SR-JV80 Scrambling C code, and for the Java classes making it possible to feasibly encode in the FCE-DPCM format. Technically, said code was since converted into Python for the sake of portability, but credit is still due for using them as a basis.
