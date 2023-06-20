@@ -207,14 +207,16 @@ def run(in_string):
             resultT = out_file.tell()
 
             #Pitch
-            offset = scanT + 8
-            parseBits(2)
-            offset = scanT
+            for k in range(2):
+                bitResult.append(0)
+            offset = scanT + 1
             parseBits(1)
             offset = scanT + 12 * 8
             parseBits(5)
             offset = scanT + 2 * 8
-            parseBits(8)
+            parseBits(7)
+            offset = scanT + 8
+            parseBits(1)
             offset = scanT + 4 * 8
             parseBits(7)
             offset = scanT + 5 * 8
