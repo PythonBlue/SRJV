@@ -35,6 +35,7 @@ def run(tmpDir, PatchImport, VerboseMode):
     bitRate = 0
     smplStart = []
     smplLoop = []
+    smplLoopType = []
     smplEnd = []
     rootKey = []
     fineTune = []
@@ -43,149 +44,81 @@ def run(tmpDir, PatchImport, VerboseMode):
     multiCount = -1
     newBlock = 0
     sourceDir = tmpDir
-
-    currentRegion = -1
-    RegName = []
-    RegRoot = []
-    RegLoop = []
-    RegEnd = []
-    RegIndex = []
-    RegEna = []
-    smplCount = []
-    
-    SetName = False
-    SetHi = False
-    SetRoot = False
-    SetLoop = False
-    SetEnd = False
-    SetIndex = False
-    SetEna = False
-    
-    for sfzName in sorted(os.listdir(sourceDir)):
-            if sfzName.endswith(".sfz"):
-                sfzTemp = open(sourceDir + foldersplit + sfzName, "r")
-                sfzTemp2 = open(sourceDir + foldersplit + "tmp", "w")
-                for line in sfzTemp.readlines():
-                    if line.startswith("<region>"):
-                        if currentRegion >= 0:
-                            if SetName == False:
-                                RegName.append("")
-                            if SetHi == False:
-                                line = "hikey=127\n" + line
-                            if SetRoot == False:
-                                RegRoot.append(60)
-                            if SetEna == False:
-                                RegEna.append(0)
-                            if SetLoop == False:
-                                RegLoop.append(-1)
-                            if SetEnd == False:
-                                RegEnd.append(-1)
-                        currentRegion += 1
-                        RegIndex.append(currentRegion)
-                        SetName = False
-                        SetHi = False
-                        SetRoot = False
-                        SetLoop = False
-                        SetEnd = False
-                        SetIndex = False
-                        SetEna = False
-                    else:
-                        if line.startswith("sample=") and SetName == False:
-                            RegName.append(line.split("=")[1].rstrip("\n"))
-                            SetName = True
-                            line = line + "ID=" + str(currentRegion) + "\n"
-                        if line.startswith("hikey=") and SetHi == False:
-                            SetHi = True
-                        if line.startswith("pitch_keycenter=") and SetRoot == False:
-                            RegRoot.append(int(line.split("=")[1].rstrip("\n")))
-                            SetRoot = True
-                        if line.startswith("loop_mode=") and SetEna == False:
-                            check = line.split("=")[1].rstrip("\n")
-                            if check == "loop_sustain" or check == "loop_continuous":
-                                RegEna.append(1)
-                            else:
-                                RegEna.append(0)
-                            SetEna = True
-                        if line.startswith("loop_start=") and SetLoop == False:
-                            RegLoop.append(int(line.split("=")[1].rstrip("\n")))
-                            SetLoop = True
-                        if line.startswith("loop_end=") and SetEnd == False:
-                            RegEnd.append(int(line.split("=")[1].rstrip("\n")))
-                            SetEnd = True
-                    sfzTemp2.write(line)
-                sfzTemp.close()
-                sfzTemp2.close()
-                os.remove(sourceDir + foldersplit + sfzName)
-                os.rename(sourceDir + foldersplit + "tmp", sourceDir + foldersplit + sfzName)
-
-    smplCountPrep = list(zip(RegName, RegRoot, RegLoop, RegEnd))
-    for item in smplCountPrep:
-        if item not in smplCount:
-            smplCount.append(item)
-    RegName, RegRoot, RegLoop, RegEnd = zip(*smplCount)
-
-    for i in range(len(RegName)):
-        if RegName[i] == "":
-            continue
-        try:
-            audioFile = open(sourceDir + foldersplit + RegName[i], "rb")
-        except:
-            print(RegName[i] + " not found! Cannot proceed!")
-            return
-        sampleCount += 1
-        sampleIDs.append(i)
-        print(RegName[i])
-        
-        audioRead = audioFile.read()
-        audioFile.seek(24)
-        sampleRate.append(int.from_bytes(audioFile.read(4), "little"))
-        audioFile.seek(34)
-        bitRate = int.from_bytes(audioFile.read(2), "little") / 8
-        dataOff = audioRead.find(b'data')
-        audioFile.seek(dataOff + 4)
-        dataSz = int(int.from_bytes(audioFile.read(4), "little") / bitRate)
-
-        if RegEna[i] == 1 and RegLoop[i] > -1 and RegEnd[i] > -1:
-            smplLoop.append(RegLoop[i])
-            smplEnd.append(RegEnd[i])
-        else:
-            smplLoop.append(dataSz - 2)
-            smplEnd.append(dataSz - 1)
+    for filename in sorted(os.listdir(sourceDir)):
+        if filename.endswith(".wav"):
+            print(filename)
+            sampleCount += 1
+            sampleIDs.append(filename)
+            audioFile = open(sourceDir + foldersplit + filename, "rb")
+            audioRead = audioFile.read()
+            audioFile.seek(24)
+            sampleRate.append(int.from_bytes(audioFile.read(4), "little"))
+            audioFile.seek(34)
+            bitRate = int.from_bytes(audioFile.read(2), "little") / 8
             
-        if smplEnd[i] == -1:
-            smplEnd[i] = dataSz
+            dataOff = audioRead.find(b'data')
+            audioFile.seek(dataOff + 4)
+            dataSz = int.from_bytes(audioFile.read(4), "little")
         
-        rootKey.append(RegRoot[i])
+            audioFile.seek(0,2)
+            audioFile.seek(-108,1)
+
             
-        fineTune.append(1024)
+            chnkOff = audioRead.find(b'smpl')
+            if dataOff < chnkOff and chnkOff < dataOff + dataSz:
+                chnkOff = audioRead.find(b'smpl', 0, dataOff)
+                if chnkOff == -1:
+                    chnkOff = audioRead.find(b'smpl', dataOff + dataSz)
+            if chnkOff >= 0:
+                audioFile.seek(chnkOff + 20)
+                rootKey.append(int.from_bytes(audioFile.read(1), "little"))
+                if chnkOff + 64 < len(audioRead):
+                    audioFile.seek(chnkOff + 48)
+                    smplLoopType.append(int.from_bytes(audioFile.read(4), "little"))
+                    smplLoop.append(int.from_bytes(audioFile.read(4), "little"))
+                    smplEnd.append(int.from_bytes(audioFile.read(4), "little"))
+                else:
+                    smplLoopType.append(0)
+                    buff = int(dataSz / bitRate)
+                    smplLoop.append(buff - 2)
+                    smplEnd.append(buff - 1)
+            else:
+                smplLoopType.append(0)
+                rootKey.append(60)
+                buff = int(dataSz / bitRate)
+                smplLoop.append(buff - 2)
+                smplEnd.append(buff - 1)
+            
+            fineTune.append(1024)
         
-        if sampleRate[sampleCount] != 32000:
-            pitchFix = 12 * math.log(sampleRate[sampleCount] / 32000, 2)
-            pitchFixStep = math.floor(pitchFix)
-            pitchFixDecim = pitchFix - pitchFixStep
-            rootKey[sampleCount] -= pitchFixStep
-            fineTune[sampleCount] += int(pitchFixDecim * 1024)
-
-        audioFile.close()
-        DPCM.Encode(sourceDir + foldersplit + RegName[i],i,smplLoop[i],smplEnd[i],VerboseMode,False)
-
-        coefIn = open(sourceDir + foldersplit + str(i) + "_exp.bin", "rb")
-        deltaIn = open(sourceDir + foldersplit + str(i) + "_delt.bin", "rb")
-        deltaIn.seek(0,2)
-        fullSize = deltaIn.tell()
-        deltaIn.seek(0)
+            if sampleRate[sampleCount] != 32000:
+                pitchFix = 12 * math.log(sampleRate[sampleCount] / 32000, 2)
+                pitchFixStep = math.floor(pitchFix)
+                pitchFixDecim = pitchFix - pitchFixStep
+                rootKey[sampleCount] -= pitchFixStep
+                fineTune[sampleCount] += int(pitchFixDecim * 1024)
         
-        if template.tell() + fullSize > 1048576 * (newBlock + 1):
-            newBlock += 1
-            template.seek(1048576 * newBlock + 32768)
-            templateCoef.seek(1048576 * newBlock + 1024)
+            audioFile.close()
+            DPCM.Encode(sourceDir + foldersplit + filename,sampleCount,smplLoop[sampleCount],smplEnd[sampleCount],VerboseMode,False)
+            
 
-        template.seek(math.ceil(template.tell() / 32) * 32)
-        smplStart.append(template.tell())
-        templateCoef.write(coefIn.read())
-        template.write(deltaIn.read())
-        coefIn.close()
-        deltaIn.close()
+            coefIn = open(sourceDir + foldersplit + filename + "_exp.bin", "rb")
+            deltaIn = open(sourceDir + foldersplit + filename + "_delt.bin", "rb")
+            deltaIn.seek(0,2)
+            fullSize = deltaIn.tell()
+            deltaIn.seek(0)
+        
+            if template.tell() + fullSize > 1048576 * (newBlock + 1):
+                newBlock += 1
+                template.seek(1048576 * newBlock + 32768)
+                templateCoef.seek(1048576 * newBlock + 1024)
+
+            template.seek(math.ceil(template.tell() / 32) * 32)
+            smplStart.append(template.tell())
+            templateCoef.write(coefIn.read())
+            template.write(deltaIn.read())
+            coefIn.close()
+            deltaIn.close()
 
     template.seek(96)
     template.write((sampleCount + 1).to_bytes(2,"big"))
@@ -195,8 +128,10 @@ def run(tmpDir, PatchImport, VerboseMode):
         sampleTable.write((smplStart[i] + smplLoop[i]).to_bytes(3, "big"))
         sampleTable.write((smplStart[i] + smplEnd[i]).to_bytes(3, "big"))
         sampleTable.write(b'\x00\x00')
-        if smplLoop[i] == 0 or (smplEnd[i] - smplLoop[i] < 4):
+        if (smplLoop[i] == 0 or (smplEnd[i] - smplLoop[i] < 4)):
             sampleTable.write(b'\x02')
+        elif smplLoopType[i] == 1:
+            sampleTable.write(b'\x01')
         else:
             sampleTable.write(b'\x00')
         sampleTable.write(rootKey[i].to_bytes(1, "big"))
@@ -216,7 +151,6 @@ def run(tmpDir, PatchImport, VerboseMode):
 
     multiTable = open("MultiTable.bin", "wb")
 
-    sampleIDCount = 0
     for filename in sorted(os.listdir(sourceDir)):
         if multiCount == 254 : continue
         if filename.endswith(".sfz"):
@@ -233,7 +167,7 @@ def run(tmpDir, PatchImport, VerboseMode):
             sfzText = sfzFile.read()
             sfzFile.close()
         
-            sampleID = re.findall("ID=.+",sfzText)
+            sampleID = re.findall("sample=.+",sfzText)
             sampleNum = [65535,65535,65535,65535,65535,65535,65535,65535,
                      65535,65535,65535,65535,65535,65535,65535,65535]
             sampleHiInt = [127,127,127,127,127,127,127,127,
@@ -266,12 +200,11 @@ def run(tmpDir, PatchImport, VerboseMode):
     template.write(multiTable.read())
 
     multiTable.close()
-
-    template.seek(83)
-    template.write(b'\x02')
-    template.seek(140)
     patch80Offset = multiOffset
     if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "80.syx"):
+        template.seek(83)
+        template.write(b'\x02')
+        template.seek(140)
         Import80.run(sourceDir + foldersplit + "Patches" + foldersplit + "80")
         patch80Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "80.patches", "rb")
         patch80Table.seek(0,2)
@@ -287,20 +220,11 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.seek(patch80Offset)
         template.write(patch80Table.read())
         patch80Table.close()
-    else:
-        template.write(patch80Offset.to_bytes(4,"big"))
-        template.write(patch80Offset.to_bytes(4,"big"))
-        template.seek(102)
-        template.write(b'\x00\x00')
-
-    template.seek(83 + 1048576)
-    template.write(b'\x03')
-    template.seek(128 + 1048576)
-    template.write(patch80Offset.to_bytes(4,"big"))
-    template.write(patch80Offset.to_bytes(4,"big"))
-    template.seek(140 + 1048576)
-    patch990Offset = patch80Offset
-    if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx"):
+    elif PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx"):
+        template.seek(83)
+        template.write(b'\x03')
+        template.seek(140)
+        patch990Offset = patch80Offset
         Import990.run(sourceDir + foldersplit + "Patches" + foldersplit + "990")
         patch990Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "990.patches", "rb")
         patch990Table.seek(0,2)
@@ -314,20 +238,11 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.seek(patch990Offset)
         template.write(patch990Table.read())
         patch990Table.close()
-    else:
-        template.write(patch990Offset.to_bytes(4,"big"))
-        template.write(patch990Offset.to_bytes(4,"big"))
-        template.seek(102 + 1048576)
-        template.write(b'\x00\x00')
-
-    template.seek(83 + 1048576 * 2)
-    template.write(b'\x05')
-    template.seek(128 + 1048576 * 2)
-    template.write(patch990Offset.to_bytes(4,"big"))
-    template.write(patch990Offset.to_bytes(4,"big"))
-    template.seek(140 + 1048576 * 2)
-    patch2080Offset = patch990Offset
-    if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx"):
+    elif PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx"):
+        template.seek(83)
+        template.write(b'\x05')
+        template.seek(140)
+        patch2080Offset = patch80Offset
         Import2080.run(sourceDir + foldersplit + "Patches" + foldersplit + "2080")
         patch2080Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "2080.patches", "rb")
         patch2080Table.seek(0,2)
@@ -342,9 +257,86 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.write(patch2080Table.read())
         patch2080Table.close()
     else:
+        template.seek(140)
+        template.write(patch80Offset.to_bytes(4,"big"))
+        template.write(patch80Offset.to_bytes(4,"big"))
+        template.seek(102)
+        template.write(b'\x00\x00')
+    template.seek(128 + 1048576)
+    template.write(patch80Offset.to_bytes(4,"big"))
+    template.write(patch80Offset.to_bytes(4,"big"))
+    patch990Offset = patch80Offset
+    if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx") and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "80.syx"):
+        if os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx"):
+            template.seek(68 + 1048576)
+            template.write(b'\x10')
+        template.seek(83 + 1048576)
+        template.write(b'\x03')
+        template.seek(140 + 1048576)
+        Import990.run(sourceDir + foldersplit + "Patches" + foldersplit + "990")
+        patch990Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "990.patches", "rb")
+        patch990Table.seek(0,2)
+        patch990Offset -= patch990Table.tell()
+        patch990Count = int(patch990Table.tell() / 379)
+        patch990Table.seek(0)
+        template.write(patch990Offset.to_bytes(4,"big"))
+        template.write(patch990Offset.to_bytes(4,"big"))
+        template.seek(102 + 1048576)
+        template.write(patch990Count.to_bytes(2,"big"))
+        template.seek(patch990Offset)
+        template.write(patch990Table.read())
+        patch990Table.close()
+    elif PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx") and not os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "80.syx"):
+        template.seek(83 + 1048576)
+        template.write(b'\x05')
+        template.seek(140 + 1048576)
+        patch2080Offset = patch990Offset
+        Import2080.run(sourceDir + foldersplit + "Patches" + foldersplit + "2080")
+        patch2080Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "2080.patches", "rb")
+        patch2080Table.seek(0,2)
+        patch2080Offset -= patch2080Table.tell()
+        patch2080Count = int(patch2080Table.tell() / 401)
+        patch2080Table.seek(0)
+        template.write(patch2080Offset.to_bytes(4,"big"))
         template.write(patch2080Offset.to_bytes(4,"big"))
         template.seek(102 + 1048576 * 2)
-        template.write(b'\x00\x00')    
+        template.write(patch2080Count.to_bytes(2,"big"))
+        template.seek(patch2080Offset)
+        template.write(patch2080Table.read())
+        patch2080Table.close()
+    else:
+        template.seek(140 + 1048576)
+        template.write(patch990Offset.to_bytes(4,"big"))
+        template.write(patch990Offset.to_bytes(4,"big"))
+        template.seek(102 + 1048576)
+        template.write(b'\x00\x00')
+
+    template.seek(83 + 1048576 * 2)
+    template.write(b'\x05')
+    template.seek(128 + 1048576 * 2)
+    template.write(patch990Offset.to_bytes(4,"big"))
+    template.write(patch990Offset.to_bytes(4,"big"))
+    template.seek(140 + 1048576 * 2)
+    patch2080Offset = patch990Offset
+    if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "80.syx") and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx") and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx"):
+        Import2080.run(sourceDir + foldersplit + "Patches" + foldersplit + "2080")
+        patch2080Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "2080.patches", "rb")
+        patch2080Table.seek(0,2)
+        patch2080Offset -= patch2080Table.tell()
+        patch2080Count = int(patch2080Table.tell() / 401)
+        patch2080Table.seek(0)
+        template.write(patch2080Offset.to_bytes(4,"big"))
+        template.write(patch2080Offset.to_bytes(4,"big"))
+        template.seek(102 + 1048576 * 2)
+        template.write(patch2080Count.to_bytes(2,"big"))
+        template.seek(patch2080Offset)
+        template.write(patch2080Table.read())
+        patch2080Table.close()
+    else:
+        template.seek(140 + 1048576)
+        template.write(patch2080Offset.to_bytes(4,"big"))
+        template.seek(102 + 1048576 * 2)
+        template.write(b'\x00\x00')
     
 
     template.close()

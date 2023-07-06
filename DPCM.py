@@ -327,7 +327,7 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         foldersplit = "\\"
         
     try:
-        output1 = open("tmp" + foldersplit + str(fcount) + "_exp.bin", "wb")
+        output1 = open(fname + "_exp.bin", "wb")
         for i in range(coefLen):
             if BrightMode == True:
                 coefs[i] = (int.from_bytes(coefs[i], "big") + 17).to_bytes(1,"big")
@@ -337,7 +337,7 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         print("Error: cannot open exponent file!")
         return
     try:
-        output2 = open("tmp" + foldersplit + str(fcount) + "_delt.bin", "wb")
+        output2 = open(fname + "_delt.bin", "wb")
         for i in range(smplEnd + 1):
             output2.write(deltas[i])
         output2.close()
