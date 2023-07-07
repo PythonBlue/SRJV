@@ -121,22 +121,25 @@ def run(tmpDir, PatchImport, VerboseMode):
             deltaIn.close()
 
     template.seek(96)
-    template.write((sampleCount + 1).to_bytes(2,"big"))
+    template.write(((sampleCount + 1) * 2).to_bytes(2,"big"))
     for i in range(sampleCount + 1):
-        sampleTable.write(b'\x7f')
-        sampleTable.write(smplStart[i].to_bytes(3, "big"))
-        sampleTable.write((smplStart[i] + smplLoop[i]).to_bytes(3, "big"))
-        sampleTable.write((smplStart[i] + smplEnd[i]).to_bytes(3, "big"))
-        sampleTable.write(b'\x00\x00')
-        if (smplLoop[i] == 0 or (smplEnd[i] - smplLoop[i] < 4)):
-            sampleTable.write(b'\x02')
-        elif smplLoopType[i] == 1:
-            sampleTable.write(b'\x01')
-        else:
-            sampleTable.write(b'\x00')
-        sampleTable.write(rootKey[i].to_bytes(1, "big"))
-        sampleTable.write(fineTune[i].to_bytes(2, "big"))
-        sampleTable.write(b'\x04\x00')
+        for j in range(2):
+            sampleTable.write(b'\x7f')
+            sampleTable.write(smplStart[i].to_bytes(3, "big"))
+            sampleTable.write((smplStart[i] + smplLoop[i]).to_bytes(3, "big"))
+            sampleTable.write((smplStart[i] + smplEnd[i]).to_bytes(3, "big"))
+            sampleTable.write(b'\x00\x00')
+            if j == 1:
+                sampleTable.write(b'\x06')
+            elif (smplLoop[i] == 0 or (smplEnd[i] - smplLoop[i] < 4)):
+                sampleTable.write(b'\x02')
+            elif smplLoopType[i] == 1:
+                sampleTable.write(b'\x01')
+            else:
+                sampleTable.write(b'\x00')
+            sampleTable.write(rootKey[i].to_bytes(1, "big"))
+            sampleTable.write(fineTune[i].to_bytes(2, "big"))
+            sampleTable.write(b'\x04\x00')
 
     waveOffset = 8388608 - sampleTable.tell()
     sampleTable.close()
@@ -177,7 +180,9 @@ def run(tmpDir, PatchImport, VerboseMode):
                 sampleID[i] = (sampleID[i].split("="))[1]
                 for j in range(len(sampleIDs)):
                     if sampleID[i] == sampleIDs[j]:
-                        sampleNum[i] = j
+                        sampleNum[i] = j * 2
+                        if multiName.find("REV") > -1:
+                            sampleNum[i] += 1
         
             sampleHi = re.findall("hikey=.+",sfzText)
             for i in range(min(16,len(sampleHi))):

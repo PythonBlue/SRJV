@@ -46,7 +46,7 @@ The SR-JV80 ROM format consists of a scrambled collection of 8 1MB blocks, big e
 * 0x000004 - 3 bytes - pointer to sample loop start
 * 0x000007 - 3 bytes - pointer to sample end
 * 0x00000a - 2 bytes - unknown purpose
-* 0x00000c - 1 byte - loop type. Known values: 0x00 (no loop), 0x01 (forward loop), 0x02 (no loop), 0x06 (reverse, non-JD only)
+* 0x00000c - 1 byte - loop type. Known values: 0x00 (forward loop), 0x01 (ping-pong loop), 0x02 (no loop), 0x06 (reverse, non-JD only)
 * 0x00000d - 1 byte - root key
 * 0x00000e - 2 bytes - fine tune, 1/1024ths of a semitone
 * 0x000010 - 2 bytes - loop fine tune, 1/1024ths of a semitone

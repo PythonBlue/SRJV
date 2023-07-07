@@ -22,13 +22,15 @@ In addition, VERY experimental patch support is also included. As it is now, the
 
 3. All imported audio needs to be in mono with a bitrate of 16-bit, 24-bit, or 32-bit linear PCM.
 
+4. If you wish to have a reverse playback variation of a multisample without needing to import duplicate samples, make sure to have "REV" in the name of the alternate sfz file. Currently the way the script works is to import both versions at once and pick one as needed to avoid too much complexity.
+
 ## Usage
 
 1. Compile all of the samples you wish to use, accompanied by an SFZ file for the sake of the multisample entries.
 
 >1a. Each SFZ filename should preferably begin with "xxx-" where the x's are numbers, though anything else for the first four characters that organize them the way you wish for the ROM will do. The format also only allows up to twelve characters, so anything more than 16 characters (including the prefix) will be truncated! Additionally, the required opcodes for full use of these tools are "sample" and "hikey".
 
->1b. All samples in the SFZ files should point to WAV samples located in the same directory. Early versions of this toolkit also required the "smpl" chunk for these wav files for loops and root keys other than middle C. This GitHub version scraps that completely in favor of all required metadata being in the SFZ files, though an additional "SMPL Extract" script has been added for compatibility.
+>1b. All samples in the SFZ files should point to WAV samples located in the same directory. For anything other than one-shot samples mapped to middle C, the "smpl" chunk is needed. Currently only WAV files exported from Wavosaur are verified to work, though feel free to test with other audio exporting tools that support the "smpl" chunk: https://www.wavosaur.com/
 
 2. If you're particularly technically savvy, an additional but optional step is to edit the headers of the included Template ROM. This will be necessary if you wish to import a recognizable card other than that ID.
 
