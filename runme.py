@@ -61,7 +61,7 @@ for path, dirc, files in os.walk(tmpDir):
         if name.endswith(".wav"):
             shutil.copy(Folder + pathDiv + name, tmpDir + pathDiv + name)
         
-ROMImport.run(tmpDir, PatchImport, VerboseMode)
+ROMImport.run(tmpDir, PatchImport, VerboseMode, False)
 ROMScramble.run("Result.bin", FinalFile)
 
 #os.remove("sampleList.txt")

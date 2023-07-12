@@ -3,7 +3,7 @@ import sys, math, platform
 def logo(x):
     if x < 64:
         return 0
-    if x < 128:
+    elif x < 128:
         return 1
     elif x < 256:
         return 2
@@ -34,8 +34,6 @@ def logo(x):
     else:
         return 15
     
-    
-
 def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd, VerboseMode):
     value = 0
     loopValue = 0
@@ -45,6 +43,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
     loopDC = (samples[smplEnd] - samples[sampleLoop - 1])
     loopLength = smplEnd - sampleLoop + 1
     loopAdjust = loopDC / loopLength
+    if loopLength < 4:
+        loopAdjust = 0
     if VerboseMode: print("sample loop DC offset: " + str(loopDC) + " (adj=" + str(loopAdjust) + ")")
     frameCount = math.ceil(smplEnd / 16)
     
@@ -55,8 +55,6 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
             off = frame * 16 + i
             sample = samples[off]
             delta = (sample - invalue)
-            if delta > 1 << 16 or delta <= -1 << 16:
-                delta = delta % (1 << 17) - (1 << 17)
             maxdelta = max(maxdelta, abs(delta))
             invalue = sample
         #decide on coefficient
@@ -92,7 +90,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
                 qsample -= 256
             preddelta = qsample << exp
 
-            if (off == sampleLoop):
+            if (off == sampleLoop) and loopLength >= 4:
                 loopValue = value
 
             value += preddelta
@@ -157,14 +155,14 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
         else:
             sample = samples[off]
         delta = (sample - invalue)
-        if delta > 1 << 16 or delta <= -1 << 16:
-            delta = delta % (1 << 17) - (1 << 17)
         maxdelta = max(maxdelta, abs(delta))
         invalue = sample
 
     lastSample = samples[smplEnd]
     lastSample -= int((loopAdjust) * (smplEnd - sampleLoop))
     loopDelta = (loopValue - lastSample)
+    if loopLength < 4:
+        loopDelta = 0
     if VerboseMode: print("loop delta: " + str(loopDelta) + " (" + str((samples[sampleLoop - 1] - samples[smplEnd])) + ")")
     if (end != 0):
         if int(loopDelta / end) > maxdelta:
@@ -232,7 +230,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
 
                 if (exp == (minexp + expa) and adjustment != 0):
                     #perform adjustment
-                    if (0 < int.from_bytes(deltas[i], "big") < 127) or (255 > int.from_bytes(deltas[i], "big") > 129):
+                    if (0 < int.from_bytes(deltas[i], "big") < 127) or (255 > int.from_bytes(deltas[i], "big") > 128):
                         byteConv = (int.from_bytes(deltas[i],"big") + adjSign) % 256
                         deltas[i] = byteConv.to_bytes(1,"big")
                         adjustment -= adjSign
@@ -300,25 +298,23 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         End1 = int.from_bytes(wav.read(1), "big")
         End2 = int.from_bytes(wav.read(1), "big")
         End3 = 0
+        End4 = 0
+        Endian = (End2 << 8) + End1
         if bitRate > 16:
             End3 = int.from_bytes(wav.read(1), "big")
-        End4 = 0
-        if bitRate > 24:
-            End4 = int.from_bytes(wav.read(1), "big")
-        Endian = (End3 << 16) + (End2 << 8) + End1
-        if Endian > 1 << (bitRate - 1):
+            Endian = (End3 << 16) + (End2 << 8) + End1
+            if bitRate > 24:
+                End4 = int.from_bytes(wav.read(1), "big")
+                Endian = (End4 << 16) + (End3 << 16) + (End2 << 8) + End1
+        if Endian >= 1 << (bitRate - 1):
             Endian -= 1 << bitRate
         wavSamplesPrep.append(Endian)
+    prevDelta = 0
     for i in range(sampleCount):
+        #Endian = (wavSamplesPrep[i] - prevDelta)
+        #prevDelta = Endian
         Endian = wavSamplesPrep[i]
-        if BrightMode == True:
-            if i > 0 and i < sampleCount - 1:
-                Endian = int((Endian * 4 - wavSamplesPrep[i - 1] - wavSamplesPrep[i + 1]) / 6)
-            elif i > 0:
-                Endian = int((Endian * 4 - wavSamplesPrep[i - 1]) / 6)
-            else:
-                Endian = int((Endian * 4 - wavSamplesPrep[i + 1]) / 6)
-        wavSamples.append(Endian >> (bitRate - 16))
+        wavSamples.append(int(Endian) >> (bitRate - 16))
 
     DPCMEncode(coefs, deltas, wavSamples, 0, sampleStart, smplLoop, smplEnd, VerboseMode)
 

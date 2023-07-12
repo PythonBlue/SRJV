@@ -206,6 +206,8 @@ def run(tmpDir, PatchImport, VerboseMode):
 
     multiTable.close()
     patch80Offset = multiOffset
+    patch990Offset = multiOffset
+    patch2080Offset = multiOffset
     if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "80.syx"):
         template.seek(83)
         template.write(b'\x02')
@@ -225,24 +227,6 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.seek(patch80Offset)
         template.write(patch80Table.read())
         patch80Table.close()
-    elif PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx"):
-        template.seek(83)
-        template.write(b'\x03')
-        template.seek(140)
-        patch990Offset = patch80Offset
-        Import990.run(sourceDir + foldersplit + "Patches" + foldersplit + "990")
-        patch990Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "990.patches", "rb")
-        patch990Table.seek(0,2)
-        patch990Offset -= patch990Table.tell()
-        patch990Count = int(patch990Table.tell() / 379)
-        patch990Table.seek(0)
-        template.write(patch990Offset.to_bytes(4,"big"))
-        template.write(patch990Offset.to_bytes(4,"big"))
-        template.seek(102 + 1048576)
-        template.write(patch990Count.to_bytes(2,"big"))
-        template.seek(patch990Offset)
-        template.write(patch990Table.read())
-        patch990Table.close()
     elif PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx"):
         template.seek(83)
         template.write(b'\x05')
@@ -256,22 +240,23 @@ def run(tmpDir, PatchImport, VerboseMode):
         patch2080Table.seek(0)
         template.write(patch2080Offset.to_bytes(4,"big"))
         template.write(patch2080Offset.to_bytes(4,"big"))
-        template.seek(102 + 1048576 * 2)
+        template.seek(102)
         template.write(patch2080Count.to_bytes(2,"big"))
         template.seek(patch2080Offset)
         template.write(patch2080Table.read())
         patch2080Table.close()
+        patch990Offset = patch80Offset
     else:
         template.seek(140)
         template.write(patch80Offset.to_bytes(4,"big"))
         template.write(patch80Offset.to_bytes(4,"big"))
         template.seek(102)
         template.write(b'\x00\x00')
+        patch990Offset = patch80Offset
     template.seek(128 + 1048576)
     template.write(patch80Offset.to_bytes(4,"big"))
     template.write(patch80Offset.to_bytes(4,"big"))
-    patch990Offset = patch80Offset
-    if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx") and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "80.syx"):
+    if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx"):
         if os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx"):
             template.seek(68 + 1048576)
             template.write(b'\x10')
@@ -291,7 +276,8 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.seek(patch990Offset)
         template.write(patch990Table.read())
         patch990Table.close()
-    elif PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx") and not os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "80.syx"):
+        patch2080Offset = patch990Offset
+    elif PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx") and not os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx"):
         template.seek(83 + 1048576)
         template.write(b'\x05')
         template.seek(140 + 1048576)
@@ -304,7 +290,7 @@ def run(tmpDir, PatchImport, VerboseMode):
         patch2080Table.seek(0)
         template.write(patch2080Offset.to_bytes(4,"big"))
         template.write(patch2080Offset.to_bytes(4,"big"))
-        template.seek(102 + 1048576 * 2)
+        template.seek(102 + 1048576)
         template.write(patch2080Count.to_bytes(2,"big"))
         template.seek(patch2080Offset)
         template.write(patch2080Table.read())
@@ -322,7 +308,6 @@ def run(tmpDir, PatchImport, VerboseMode):
     template.write(patch990Offset.to_bytes(4,"big"))
     template.write(patch990Offset.to_bytes(4,"big"))
     template.seek(140 + 1048576 * 2)
-    patch2080Offset = patch990Offset
     if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "80.syx") and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx") and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "2080.syx"):
         Import2080.run(sourceDir + foldersplit + "Patches" + foldersplit + "2080")
         patch2080Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "2080.patches", "rb")
@@ -338,7 +323,7 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.write(patch2080Table.read())
         patch2080Table.close()
     else:
-        template.seek(140 + 1048576)
+        template.seek(140 + 1048576 * 2)
         template.write(patch2080Offset.to_bytes(4,"big"))
         template.seek(102 + 1048576 * 2)
         template.write(b'\x00\x00')

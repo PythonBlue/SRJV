@@ -25,11 +25,26 @@ def run(in_string):
     out_file = open(in_string + ".patches", "wb")
     if in_file.read(1) == b'\xf0':
         isSysex = True
+    in_file.seek(11)
+    startOffset = 0
+    if isSysex == True:
+        in_file.seek(9)
+        firstMessage = int.from_bytes(in_file.read(1),"big")
+        if (firstMessage < 32):
+            startOffset = 12
+            
+    SQCheck = False
+    in_file.seek(324 + startOffset)
+    if in_file.read(1) == b'\xf0':
+        SQCheck = True
+        
     in_file.seek(0,2)
     patchCount = int((in_file.tell()) / 519)
-    in_file.seek(0)
+        
+    in_file.seek(startOffset)
+    
     offset = 0
-
+    
     for i in range(patchCount):
         scan = in_file.tell()
         result = out_file.tell()
@@ -55,6 +70,8 @@ def run(in_string):
         bitCount = 0
         for k in range(4):
             for j in range(92):
+                if k == 2 and bitCount == 184 and SQCheck == True:
+                    in_file.seek(11,1)
                 byte = int.from_bytes(in_file.read(1), "big")
                 if bitCount == (k * 92) and byte > 1:
                     byte = 1
@@ -67,7 +84,7 @@ def run(in_string):
                 bits.append((byte & 64) >> 6)
                 bits.append((byte & 128) >> 7)
                 bitCount += 1
-                if k == 2 and bitCount == 256:
+                if k == 2 and bitCount == 256 and SQCheck == False:
                     in_file.seek(11,1)
                 
         offset = 25 * 8
@@ -207,16 +224,14 @@ def run(in_string):
             resultT = out_file.tell()
 
             #Pitch
-            for k in range(2):
-                bitResult.append(0)
-            offset = scanT + 1
+            offset = scanT + 8
+            parseBits(2)
+            offset = scanT
             parseBits(1)
             offset = scanT + 12 * 8
             parseBits(5)
             offset = scanT + 2 * 8
-            parseBits(7)
-            offset = scanT + 8
-            parseBits(1)
+            parseBits(8)
             offset = scanT + 4 * 8
             parseBits(7)
             offset = scanT + 5 * 8
