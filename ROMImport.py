@@ -11,7 +11,7 @@ import Import80
 import Import990
 import Import2080
 
-def run(tmpDir, PatchImport, VerboseMode):
+def run(tmpDir, PatchImport, VerboseMode, BrightMode):
     shutil.copyfile("Template.bin", "Result.bin")
     template = open("Result.bin", "rb+")
     templateCoef = open("Result.bin", "rb+")
@@ -99,7 +99,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                 fineTune[sampleCount] += int(pitchFixDecim * 1024)
         
             audioFile.close()
-            DPCM.Encode(sourceDir + foldersplit + filename,sampleCount,smplLoop[sampleCount],smplEnd[sampleCount],VerboseMode,False)
+            DPCM.Encode(sourceDir + foldersplit + filename,sampleCount,smplLoop[sampleCount],smplEnd[sampleCount],VerboseMode,BrightMode)
             
 
             coefIn = open(sourceDir + foldersplit + filename + "_exp.bin", "rb")

@@ -18,7 +18,7 @@ if len(sys.argv) > 1:
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', type=str, default='input', help='Input folder')
     parser.add_argument('-o', '--output', type=str, default='Final', help='Output filename')
-    #parser.add_argument('-b', '--bright', action='store_true', help='Brighter sound')
+    parser.add_argument('-b', '--bright', action='store_true', help='Brighter sound')
     parser.add_argument('-p', '--patches', action='store_true', help='Import patches')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
     args = parser.parse_args()
@@ -27,7 +27,7 @@ if len(sys.argv) > 1:
         FinalFile = "Final.bin"
     else:
         FinalFile = args.output.split('.')[0] + ".bin"
-    #BrightMode = args.bright
+    BrightMode = args.bright
     PatchImport = args.patches
     VerboseMode = args.verbose
 else:
@@ -37,9 +37,9 @@ else:
         FinalFile = "Final.bin"
     else:
         FinalFile = FinalFile.split('.')[0] + ".bin"
-    #BrightModeStr = input("High frequency compensation? (Y if yes) ")
-    #if BrightModeStr == "y" or BrightModeStr == "Y":
-        #BrightMode = True
+    BrightModeStr = input("High frequency compensation? (Y if yes) ")
+    if BrightModeStr == "y" or BrightModeStr == "Y":
+        BrightMode = True
     PatchImportStr = input("Import Patches? (Y if yes) ")
     if PatchImportStr == "y" or PatchImportStr == "Y":
         PatchImport = True
@@ -61,7 +61,7 @@ for path, dirc, files in os.walk(tmpDir):
         if name.endswith(".wav"):
             shutil.copy(Folder + pathDiv + name, tmpDir + pathDiv + name)
         
-ROMImport.run(tmpDir, PatchImport, VerboseMode, False)
+ROMImport.run(tmpDir, PatchImport, VerboseMode, BrightMode)
 ROMScramble.run("Result.bin", FinalFile)
 
 #os.remove("sampleList.txt")

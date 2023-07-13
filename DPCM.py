@@ -161,14 +161,20 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
     lastSample = samples[smplEnd]
     lastSample -= int((loopAdjust) * (smplEnd - sampleLoop))
     loopDelta = (loopValue - lastSample)
+    if loopDelta >= 1 << 17:
+        loopDelta = loopDelta % (1 << 17)
+    elif loopDelta <= -1 << 17:
+        loopDelta = loopDelta % (1 << 17) - (1 << 17)
+        if loopDelta == -1 << 17:
+            loopDelta = 0
     if loopLength < 4:
         loopDelta = 0
     if VerboseMode: print("loop delta: " + str(loopDelta) + " (" + str((samples[sampleLoop - 1] - samples[smplEnd])) + ")")
     if (end != 0):
         if int(loopDelta / end) > maxdelta:
             maxdelta = int(loopDelta / end)
-    elif int(loopDelta > maxdelta):
-        maxdelta = loopDelta
+    elif int(abs(loopDelta) > maxdelta):
+        maxdelta = abs(loopDelta)
     adjust = int(loopDelta / (end + 1))
     if VerboseMode: print("loop adjust: " + str(adjust) + " over " + str(end + 1) + " samples")
 
@@ -209,6 +215,12 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
 
     #Last passes: adjust using minimum
     residualDC = (loopValue - value)
+    if residualDC >= 1 << 17:
+        residualDC = residualDC % (1 << 17)
+    elif residualDC < -1 << 17:
+        residualDC = residualDC % (1 << 17) - (1 << 17)
+        if residualDC == -1 << 17:
+            residualDC = 0
     adjustment = 0
     for expa in range(3,-1,-1):
         if (residualDC % (1 << (minexp + expa)) >= 0):
@@ -253,6 +265,12 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
             sample -= 256
         delta = sample << exp
         decodeValue += delta
+    if decodeValue >= 1 << 17:
+        decodeValue = decodeValue % (1 << 17)
+    elif decodeValue <= -1 << 17:
+        decodeValue = decodeValue % (1 << 17) - (1 << 17)
+        if decodeValue == -1 << 17:
+            decodeValue = 0
 
     #check if there is some DC offset
     if (decodeValue != 0 and smplEnd - sampleLoop > 1):
@@ -311,13 +329,14 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         wavSamplesPrep.append(Endian)
     prevDelta = 0
     for i in range(sampleCount):
-        #Endian = (wavSamplesPrep[i] - prevDelta)
-        #prevDelta = Endian
         Endian = wavSamplesPrep[i]
+        if BrightMode == True:
+            if abs(Endian - prevDelta) < 1 >> 16:
+                Endian -= prevDelta
+            prevDelta = Endian
         wavSamples.append(int(Endian) >> (bitRate - 16))
 
     DPCMEncode(coefs, deltas, wavSamples, 0, sampleStart, smplLoop, smplEnd, VerboseMode)
-
     foldersplit = "/"
     if platform.system() == "Windows":
         foldersplit = "\\"
@@ -325,8 +344,6 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
     try:
         output1 = open(fname + "_exp.bin", "wb")
         for i in range(coefLen):
-            if BrightMode == True:
-                coefs[i] = (int.from_bytes(coefs[i], "big") + 17).to_bytes(1,"big")
             output1.write(coefs[i])
         output1.close()
     except:
