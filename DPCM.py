@@ -67,7 +67,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
             maxdelta = max(maxdelta, abs(delta))
             invalue = sample
         #decide on coefficient
-        exp = int(logo((maxdelta + loopAdjust) / 0.96875))
+        exp = int(logo((maxdelta + loopAdjust) / 0.95))
         if (exp < 0):
             exp = 0
         elif (exp > 15):
@@ -200,7 +200,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
     if VerboseMode: print("loop adjust: " + str(adjust) + " over " + str(end + 1) + " samples")
 
     #decide on coefficient
-    exp = int(logo(maxdelta / 0.96875))
+    exp = int(logo(maxdelta / 0.95))
     if (exp < 0):
         exp = 0
     if (exp > 15):
@@ -359,12 +359,12 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         if BrightMode == True:
             Endian -= prevDelta
             EndFinal = Endian << 1
-            prevDelta = Endian
+            prevDelta = int(Endian * 0.99)
             if abs(Endian) > 1 << (bitRate - 1):
                 Retry = True
                 wavSamples = []
                 break
-            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 0.5:
+            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 0.1:
                 Retry = True
                 wavSamples = []
                 break
@@ -373,9 +373,10 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         Retry = False
         for i in range(sampleCount):
             Endian = wavSamplesPrep[i]
+            EndFinal = Endian
             Endian -= prevDelta
-            prevDelta = Endian / 2
-            EndFinal = int(Endian * 3 / 2)
+            EndFinal = Endian * 3 / 2
+            prevDelta = int(Endian * 0.5)
             if abs(Endian) > 1 << (bitRate - 1):
                 Retry = True
                 wavSamples = []
