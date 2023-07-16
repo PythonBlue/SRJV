@@ -350,13 +350,9 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         EndFinal = Endian
         if BrightMode == True:
             Endian -= prevDelta
-            EndFinal = Endian << 1
-            prevDelta = int(Endian * 0.99)
+            EndFinal = int(Endian * 31 / 8)
+            prevDelta = int(Endian * 0.875)
             if abs(Endian) > 1 << (bitRate - 1):
-                Retry = True
-                wavSamples = []
-                break
-            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 128:
                 Retry = True
                 wavSamples = []
                 break
@@ -374,10 +370,6 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
                 Retry = True
                 wavSamples = []
                 break
-            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 128:
-                Retry = True
-                wavSamples = []
-                break
             wavSamples.append(int(EndFinal) >> (bitRate - 16))
     if Retry == True:
         print("Retry #2")
@@ -389,10 +381,6 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
             EndFinal = Endian * 3 / 2
             prevDelta = int(Endian * 0.5)
             if abs(Endian) > 1 << (bitRate - 1):
-                Retry = True
-                wavSamples = []
-                break
-            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 128:
                 Retry = True
                 wavSamples = []
                 break
