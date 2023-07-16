@@ -37,21 +37,20 @@ def logo(x):
 def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd, VerboseMode):
     value = 0
     loopValue = 0
+    loopCoef = 0
     invalue = 0
     offsetCheck = 0
     maxexp = 0
     
     loopDC = (samples[smplEnd] - samples[sampleLoop - 1])
-    if loopDC >= (1 << 17):
-        loopDC -= (1 << 18)
-    elif loopDC < (-1 << 17):
-        loopDC += (1 << 18)
     loopLength = smplEnd - sampleLoop + 1
     loopAdjust = loopDC / loopLength
     if loopLength < 4:
         loopAdjust = 0
     if VerboseMode: print("sample loop DC offset: " + str(loopDC) + " (adj=" + str(loopAdjust) + ")")
     frameCount = math.ceil(smplEnd / 16)
+    if smplEnd % 16 == 0 and smplEnd - sampleLoop > 16:
+        frameCount += 1
     
     #encode all frames except the last one
     for frame in range(frameCount - 1):
@@ -59,15 +58,17 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
         for i in range(16):
             off = frame * 16 + i
             sample = samples[off]
+            if (off >= sampleLoop):
+                adj = int(loopAdjust * (off - sampleLoop))
+                sample -= adj
             delta = (sample - invalue)
-            if delta >= (1 << 17):
-                delta -= (1 << 18)
-            elif delta < (-1 << 17):
-                delta += (1 << 18)
-            maxdelta = max(maxdelta, abs(delta))
+            if delta < 0:
+                maxdelta = max(maxdelta, abs(delta))
+            else:
+                maxdelta = max(maxdelta, abs(delta))
             invalue = sample
         #decide on coefficient
-        exp = int(logo((maxdelta + loopAdjust) / 0.95))
+        exp = int(logo(maxdelta / 0.96875))
         if (exp < 0):
             exp = 0
         elif (exp > 15):
@@ -92,10 +93,6 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
                 adj = int(loopAdjust * (off - sampleLoop))
                 sample -= adj
             delta = (sample - value)
-            if delta >= (1 << 17):
-                delta -= (1 << 18)
-            elif delta < (-1 << 17):
-                delta += (1 << 18)
             #quantize delta
             deltas[off] = (int(delta / coef) & 0xff).to_bytes(1,"big")
 
@@ -107,12 +104,9 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
 
             if (off == sampleLoop) and loopLength >= 4:
                 loopValue = value
+                loopCoef = exp
 
             value += preddelta
-            if value >= (1 << 17):
-                value -= (1 << 18)
-            elif value < (-1 << 17):
-                value += (1 << 18)
     #second pass: find smallest exponent in the loop
     minexp = 15
     for i in range(sampleLoop, (frameCount - 1) * 16, 16):
@@ -160,10 +154,6 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
             sample -= 256
         delta = sample << exp
         decodeValue += delta
-        if decodeValue >= (1 << 17):
-            decodeValue -= (1 << 18)
-        elif decodeValue < (-1 << 17):
-            decodeValue += (1 << 18)
     if VerboseMode: print("value=" + str(value) + ", decodeValue=" + str(decodeValue))
 
     frame = frameCount - 1
@@ -173,34 +163,35 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
     maxdelta = 0
     for i in range(16):
         off = frame * 16 + i
-        if off >= smplEnd:
+        if off > smplEnd:
             sample = 0
         else:
             sample = samples[off]
         delta = (sample - invalue)
-        if delta >= (1 << 17):
-            delta -= (1 << 18)
-        elif delta < (-1 << 17):
-            delta += (1 << 18)
-        maxdelta = max(maxdelta, abs(delta))
+        if delta < 0:
+            maxdelta = max(maxdelta, abs(delta))
+        else:
+            maxdelta = max(maxdelta, abs(delta))
         invalue = sample
-
+        
     lastSample = samples[smplEnd]
     lastSample -= int((loopAdjust) * (smplEnd - sampleLoop))
     loopDelta = (loopValue - lastSample)
     if loopLength < 4:
         loopDelta = 0
+    adjust = int(loopDelta / (end + 1))
+    
     if VerboseMode: print("loop delta: " + str(loopDelta) + " (" + str((samples[sampleLoop - 1] - samples[smplEnd])) + ")")
     if (end != 0):
-        if int(loopDelta / end) > maxdelta:
-            maxdelta = int(loopDelta / end)
+        if int(abs(loopDelta / end)) > maxdelta:
+            maxdelta = int(loopDelta / end) + 1
     elif int(abs(loopDelta) > maxdelta):
-        maxdelta = abs(loopDelta)
-    adjust = int(loopDelta / (end + 1))
+        maxdelta = loopDelta + 1
     if VerboseMode: print("loop adjust: " + str(adjust) + " over " + str(end + 1) + " samples")
 
+
     #decide on coefficient
-    exp = int(logo(maxdelta / 0.95))
+    exp = int(logo(maxdelta / 0.96875))
     if (exp < 0):
         exp = 0
     if (exp > 15):
@@ -225,10 +216,6 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
         adj = int(loopAdjust * (off - sampleLoop))
         sample -= adj
         delta = sample - value + adjust
-        if delta >= (1 << 17):
-            delta -= (1 << 18)
-        elif delta < (-1 << 17):
-            delta += (1 << 18)
 
         #quantize delta
         deltas[off] = (int(delta / coef) & 0xff).to_bytes(1,"big")
@@ -239,24 +226,21 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
             qsample -= 256
         preddelta = qsample << exp
         value += preddelta
-        if value >= (1 << 17):
-            value -= (1 << 18)
-        elif value < (-1 << 17):
-            value += (1 << 18)
+    
 
     #Last passes: adjust using minimum
     residualDC = (loopValue - value)
-    adjustment = 0
-    for expa in range(3,-1,-1):
-        if (residualDC % (1 << (minexp + expa)) >= 0) and residualDC != 0:
+    if abs(residualDC) >> minexp == 0:
+        residualDC = 0
+    for expa in range(maxexp - minexp,-1,-1):
+        adjSign = 0
+        if residualDC < 0:
+            adjSign = -1
+        elif residualDC > 0:
+            adjSign = 1
+        if (residualDC % (1 << (minexp + expa + 8)) > 0) and residualDC != 0:
             adjustment = residualDC >> (minexp + expa)
             if VerboseMode: print("correcting error exactly: " + str(adjustment) + " (" + str(residualDC) + ")")
-            adjSign = 0
-            if residualDC < 0:
-                    adjSign = -1
-            if residualDC > 0:
-                    adjSign = 1
-        
             #adjusting once per sample
             for i in range(sampleLoop, (frameCount - 1) * 16):
                 sampleId = i - sampleStart
@@ -267,7 +251,17 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
                 else:
                     exp = (coef >> 4) & 0x0f
 
-                if (exp == (minexp + expa) and adjustment != 0):
+                    
+                if (exp == (minexp + expa) and adjustment == -128):
+                    byteConv = int.from_bytes(deltas[i], "big")
+                    if byteConv < 128 and adjSign < 0:
+                        byteConv += 128
+                        deltas[i] = byteConv.to_bytes(1,"big")
+                        adjustment -= adjSign << 7
+                        residualDC -= (adjSign << (minexp + expa + 7))
+                    
+
+                elif (exp == (minexp + expa) and adjustment != 0):
                     #perform adjustment
                     if (0 < int.from_bytes(deltas[i], "big") < 127) or (255 > int.from_bytes(deltas[i], "big") > 128):
                         byteConv = (int.from_bytes(deltas[i],"big") + adjSign) % 256
@@ -292,10 +286,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
             sample -= 256
         delta = sample << exp
         decodeValue += delta
-        if decodeValue >= (1 << 17):
-            decodeValue -= (1 << 18)
-        elif decodeValue < (-1 << 17):
-            decodeValue += (1 << 18)
+    if abs(decodeValue) >> minexp == 0:
+        decodeValue = 0
     #check if there is some DC offset
     if (decodeValue != 0 and smplEnd - sampleLoop > 1):
         print("DC offset: " + str(decodeValue))
@@ -364,12 +356,31 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
                 Retry = True
                 wavSamples = []
                 break
-            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 0.1:
+            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 128:
                 Retry = True
                 wavSamples = []
                 break
         wavSamples.append(int(EndFinal) >> (bitRate - 16))
     if Retry == True:
+        print("Retry #1")
+        Retry = False
+        for i in range(sampleCount):
+            Endian = wavSamplesPrep[i]
+            EndFinal = Endian
+            Endian -= prevDelta
+            EndFinal = Endian * 7 / 4
+            prevDelta = int(Endian * 0.75)
+            if abs(Endian) > 1 << (bitRate - 1):
+                Retry = True
+                wavSamples = []
+                break
+            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 128:
+                Retry = True
+                wavSamples = []
+                break
+            wavSamples.append(int(EndFinal) >> (bitRate - 16))
+    if Retry == True:
+        print("Retry #2")
         Retry = False
         for i in range(sampleCount):
             Endian = wavSamplesPrep[i]
@@ -381,8 +392,13 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
                 Retry = True
                 wavSamples = []
                 break
+            if i == sampleCount - 1 and abs((EndFinal - wavSamples[smplLoop - 1]) / (i - smplLoop + 1)) > 128:
+                Retry = True
+                wavSamples = []
+                break
             wavSamples.append(int(EndFinal) >> (bitRate - 16))
     if Retry == True:
+        print("Retry #3")
         for i in range(sampleCount):
             wavSamples.append(wavSamplesPrep[i])
 
