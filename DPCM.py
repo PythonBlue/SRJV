@@ -350,8 +350,8 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         EndFinal = Endian
         if BrightMode == True:
             Endian -= prevDelta
-            EndFinal = int(Endian * 31 / 16)
-            prevDelta = int(Endian * 0.9375)
+            EndFinal = int(Endian * 15 / 8)
+            prevDelta = int(Endian * 0.875)
             if abs(Endian) > 1 << (bitRate - 1):
                 Retry = True
                 wavSamples = []
