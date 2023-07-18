@@ -65,7 +65,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
             if delta < 0:
                 maxdelta = max(maxdelta, abs(delta))
             else:
-                maxdelta = max(maxdelta, abs(delta))
+                maxdelta = max(maxdelta, abs(delta + 1))
             invalue = sample
         #decide on coefficient
         exp = int(logo(maxdelta / 0.96875))
@@ -171,7 +171,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
         if delta < 0:
             maxdelta = max(maxdelta, abs(delta))
         else:
-            maxdelta = max(maxdelta, abs(delta))
+            maxdelta = max(maxdelta, abs(delta + 1))
         invalue = sample
         
     lastSample = samples[smplEnd]
@@ -344,51 +344,76 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
             Endian -= 1 << bitRate
         wavSamplesPrep.append(Endian)
     prevDelta = 0
-    Retry = False
-    for i in range(sampleCount):
-        Endian = wavSamplesPrep[i]
-        EndFinal = Endian
-        if BrightMode == True:
-            Endian -= prevDelta
-            EndFinal = int(Endian * 15 / 8)
-            prevDelta = int(Endian * 0.875)
-            if abs(Endian) > 1 << (bitRate - 1):
-                Retry = True
-                wavSamples = []
-                break
-        wavSamples.append(int(EndFinal) >> (bitRate - 16))
-    if Retry == True:
-        print("Retry #1")
-        Retry = False
+    Retry = 0
+    if BrightMode == True:
+        Retry = 1
+    if Retry == 1:
+        #First try
         for i in range(sampleCount):
             Endian = wavSamplesPrep[i]
-            EndFinal = Endian
+            Endian -= prevDelta
+            EndFinal = Endian * 31 / 16
+            prevDelta = int(Endian * 0.9375)
+            if abs(Endian) > 1 << (bitRate - 1):
+                Retry = 2
+                wavSamples = []
+                prevDelta = 0
+                break
+            wavSamples.append(int(EndFinal) >> (bitRate - 16))
+            if i == smplEnd and abs((wavSamplesPrep[i] - (wavSamplesPrep[smplLoop - 1])) / (smplEnd - smplLoop + 1) / (smplEnd - smplLoop + 1)) < 256:
+                wavSamples[i - 1] = wavSamples[smplLoop - 2]
+                wavSamples[i] = wavSamples[smplLoop - 1]
+    if Retry == 2:
+        #Retry #1
+        for i in range(sampleCount):
+            Endian = wavSamplesPrep[i]
+            Endian -= prevDelta
+            EndFinal = Endian * 15 / 8
+            prevDelta = int(Endian * 0.875)
+            if abs(Endian) > 1 << (bitRate - 1):
+                Retry = 3
+                wavSamples = []
+                prevDelta = 0
+                break
+            wavSamples.append(int(EndFinal) >> (bitRate - 16))
+            if i == smplEnd and abs((wavSamplesPrep[i] - (wavSamplesPrep[smplLoop - 1])) / (smplEnd - smplLoop + 1) / (smplEnd - smplLoop + 1)) < 256:
+                wavSamples[i - 1] = wavSamples[smplLoop - 2]
+                wavSamples[i] = wavSamples[smplLoop - 1]
+    if Retry == 3:
+        #Retry #2
+        for i in range(sampleCount):
+            Endian = wavSamplesPrep[i]
             Endian -= prevDelta
             EndFinal = Endian * 7 / 4
             prevDelta = int(Endian * 0.75)
             if abs(Endian) > 1 << (bitRate - 1):
-                Retry = True
+                Retry = 4
                 wavSamples = []
+                prevDelta = 0
                 break
             wavSamples.append(int(EndFinal) >> (bitRate - 16))
-    if Retry == True:
-        print("Retry #2")
-        Retry = False
+            if i == smplEnd and abs((wavSamplesPrep[i] - (wavSamplesPrep[smplLoop - 1])) / (smplEnd - smplLoop + 1) / (smplEnd - smplLoop + 1)) < 256:
+                wavSamples[i - 1] = wavSamples[smplLoop - 2]
+                wavSamples[i] = wavSamples[smplLoop - 1]
+    if Retry == 4:
+        #Last retry"
         for i in range(sampleCount):
             Endian = wavSamplesPrep[i]
-            EndFinal = Endian
             Endian -= prevDelta
             EndFinal = Endian * 3 / 2
             prevDelta = int(Endian * 0.5)
             if abs(Endian) > 1 << (bitRate - 1):
-                Retry = True
+                Retry = 0
                 wavSamples = []
+                prevDelta = 0
                 break
             wavSamples.append(int(EndFinal) >> (bitRate - 16))
-    if Retry == True:
-        print("Retry #3")
+            if i == smplEnd and abs((wavSamplesPrep[i] - (wavSamplesPrep[smplLoop - 1])) / (smplEnd - smplLoop + 1) / (smplEnd - smplLoop + 1)) < 256:
+                wavSamples[i - 1] = wavSamples[smplLoop - 2]
+                wavSamples[i] = wavSamples[smplLoop - 1]
+    if Retry == 0:
         for i in range(sampleCount):
-            wavSamples.append(wavSamplesPrep[i])
+            wavSamples.append(int(wavSamplesPrep[i]) >> (bitRate - 16))
 
     DPCMEncode(coefs, deltas, wavSamples, 0, sampleStart, smplLoop, smplEnd, VerboseMode)
     foldersplit = "/"
