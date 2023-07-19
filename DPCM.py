@@ -68,7 +68,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
                 maxdelta = max(maxdelta, abs(delta + 1))
             invalue = sample
         #decide on coefficient
-        exp = int(logo(maxdelta / 0.96875))
+        exp = int(logo(maxdelta * 64 / 63))
         if (exp < 0):
             exp = 0
         elif (exp > 15):
@@ -184,14 +184,14 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
     if VerboseMode: print("loop delta: " + str(loopDelta) + " (" + str((samples[sampleLoop - 1] - samples[smplEnd])) + ")")
     if (end != 0):
         if int(abs(loopDelta / end)) > maxdelta:
-            maxdelta = int(loopDelta / end) + 1
+            maxdelta = int(abs(loopDelta / end))
     elif int(abs(loopDelta) > maxdelta):
-        maxdelta = loopDelta + 1
+        maxdelta = abs(loopDelta)
     if VerboseMode: print("loop adjust: " + str(adjust) + " over " + str(end + 1) + " samples")
 
 
     #decide on coefficient
-    exp = int(logo(maxdelta / 0.96875))
+    exp = int(logo(maxdelta * 64 / 63))
     if (exp < 0):
         exp = 0
     if (exp > 15):
@@ -234,11 +234,11 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
         residualDC = 0
     for expa in range(maxexp - minexp,-1,-1):
         adjSign = 0
-        if residualDC < 0:
+        if math.floor(residualDC >> (minexp + expa)) < 0:
             adjSign = -1
-        elif residualDC > 0:
+        elif residualDC >> (minexp + expa) > 0:
             adjSign = 1
-        if (residualDC % (1 << (minexp + expa + 8)) > 0) and residualDC != 0:
+        if (residualDC % (1 << (minexp + expa + 8)) >= 0) and residualDC != 0:
             adjustment = residualDC >> (minexp + expa)
             if VerboseMode: print("correcting error exactly: " + str(adjustment) + " (" + str(residualDC) + ")")
             #adjusting once per sample
@@ -250,18 +250,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
                     exp = coef & 0x0f
                 else:
                     exp = (coef >> 4) & 0x0f
-
                     
-                if (exp == (minexp + expa) and adjustment == -128):
-                    byteConv = int.from_bytes(deltas[i], "big")
-                    if byteConv < 128 and adjSign < 0:
-                        byteConv += 128
-                        deltas[i] = byteConv.to_bytes(1,"big")
-                        adjustment -= adjSign << 7
-                        residualDC -= (adjSign << (minexp + expa + 7))
-                    
-
-                elif (exp == (minexp + expa) and adjustment != 0):
+                if (exp == (minexp + expa) and adjustment != 0):
                     #perform adjustment
                     if (0 < int.from_bytes(deltas[i], "big") < 127) or (255 > int.from_bytes(deltas[i], "big") > 128):
                         byteConv = (int.from_bytes(deltas[i],"big") + adjSign) % 256
@@ -344,74 +334,40 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
             Endian -= 1 << bitRate
         wavSamplesPrep.append(Endian)
     prevDelta = 0
-    Retry = 0
-    if BrightMode == True:
-        Retry = 1
-    if Retry == 1:
-        #First try
+    if BrightMode > 0:
+        wavSamples = []
+        wavSamplesA = []
+        wavSamplesB = []
+        wavSamplesC = []
+        prevDelta = 0
+        prevEndian = 0
+        print("Bright")
         for i in range(sampleCount):
             Endian = wavSamplesPrep[i]
-            Endian -= prevDelta
-            EndFinal = Endian * 31 / 16
-            prevDelta = int(Endian * 0.9375)
-            if abs(Endian) > 1 << (bitRate - 1):
-                Retry = 2
-                wavSamples = []
-                prevDelta = 0
-                break
-            wavSamples.append(int(EndFinal) >> (bitRate - 16))
-            if i == smplEnd and abs((wavSamplesPrep[i] - (wavSamplesPrep[smplLoop - 1])) / (smplEnd - smplLoop + 1) / (smplEnd - smplLoop + 1)) < 256:
-                wavSamples[i - 1] = wavSamples[smplLoop - 2]
-                wavSamples[i] = wavSamples[smplLoop - 1]
-    if Retry == 2:
-        #Retry #1
+            if i > 0:
+                Endian -= wavSamplesPrep[i - 1]
+            Endian += prevEndian
+            EndFinal = Endian * 2
+            prevEndian = prevDelta
+            prevDelta = int(Endian)
+            wavSamplesA.append(int(EndFinal) >> (bitRate - 16))
+            wavSamplesB.append(int(EndFinal) >> (bitRate - 16))
+            wavSamplesC.append(int(EndFinal) >> (bitRate - 16))
+        for j in range(BrightMode):
+            for i in range(sampleCount):
+                Endian = wavSamplesB[i]
+                if i > 0:
+                    Endian -= wavSamplesB[i - 1]
+                    wavSamplesC[i] = int(Endian / 2)
+            for i in range(sampleCount):
+                wavSamplesB[i] = wavSamplesC[i]
         for i in range(sampleCount):
-            Endian = wavSamplesPrep[i]
-            Endian -= prevDelta
-            EndFinal = Endian * 15 / 8
-            prevDelta = int(Endian * 0.875)
-            if abs(Endian) > 1 << (bitRate - 1):
-                Retry = 3
-                wavSamples = []
-                prevDelta = 0
-                break
-            wavSamples.append(int(EndFinal) >> (bitRate - 16))
-            if i == smplEnd and abs((wavSamplesPrep[i] - (wavSamplesPrep[smplLoop - 1])) / (smplEnd - smplLoop + 1) / (smplEnd - smplLoop + 1)) < 256:
-                wavSamples[i - 1] = wavSamples[smplLoop - 2]
-                wavSamples[i] = wavSamples[smplLoop - 1]
-    if Retry == 3:
-        #Retry #2
-        for i in range(sampleCount):
-            Endian = wavSamplesPrep[i]
-            Endian -= prevDelta
-            EndFinal = Endian * 7 / 4
-            prevDelta = int(Endian * 0.75)
-            if abs(Endian) > 1 << (bitRate - 1):
-                Retry = 4
-                wavSamples = []
-                prevDelta = 0
-                break
-            wavSamples.append(int(EndFinal) >> (bitRate - 16))
-            if i == smplEnd and abs((wavSamplesPrep[i] - (wavSamplesPrep[smplLoop - 1])) / (smplEnd - smplLoop + 1) / (smplEnd - smplLoop + 1)) < 256:
-                wavSamples[i - 1] = wavSamples[smplLoop - 2]
-                wavSamples[i] = wavSamples[smplLoop - 1]
-    if Retry == 4:
-        #Last retry"
-        for i in range(sampleCount):
-            Endian = wavSamplesPrep[i]
-            Endian -= prevDelta
-            EndFinal = Endian * 3 / 2
-            prevDelta = int(Endian * 0.5)
-            if abs(Endian) > 1 << (bitRate - 1):
-                Retry = 0
-                wavSamples = []
-                prevDelta = 0
-                break
-            wavSamples.append(int(EndFinal) >> (bitRate - 16))
-            if i == smplEnd and abs((wavSamplesPrep[i] - (wavSamplesPrep[smplLoop - 1])) / (smplEnd - smplLoop + 1) / (smplEnd - smplLoop + 1)) < 256:
-                wavSamples[i - 1] = wavSamples[smplLoop - 2]
-                wavSamples[i] = wavSamples[smplLoop - 1]
-    if Retry == 0:
+            wavSamples.append(wavSamplesA[i] - wavSamplesB[i])
+                
+    else:
+        wavSamples = []
+        prevDelta = 0
+        prevEndian = 0
         for i in range(sampleCount):
             wavSamples.append(int(wavSamplesPrep[i]) >> (bitRate - 16))
 
