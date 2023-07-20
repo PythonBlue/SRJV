@@ -27,10 +27,7 @@ if len(sys.argv) > 1:
         FinalFile = "Final.bin"
     else:
         FinalFile = args.output.split('.')[0] + ".bin"
-    try:
-        BrightMode = min(abs(int(args.bright), 16))
-    except:
-        BrightMode = 0
+    BrightMode = min(abs(args.bright), 16)
     PatchImport = args.patches
     VerboseMode = args.verbose
 else:
