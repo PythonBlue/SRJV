@@ -24,6 +24,8 @@ In addition, VERY experimental patch support is also included. As it is now, the
 
 4. If you wish to have a reverse playback variation of a multisample without needing to import duplicate samples, make sure to have "REV" in the name of the alternate sfz file. Currently the way the script works is to import both versions at once and pick one as needed to avoid too much complexity.
 
+5. There can be no more than 255 multisamples in a ROM, and each multisample is limited to 16 samples.
+
 ## Usage
 
 1. Compile all of the samples you wish to use, accompanied by an SFZ file for the sake of the multisample entries.
