@@ -18,7 +18,7 @@ In addition, VERY experimental patch support is also included. As it is now, the
 
 1. Total filesize needs to conform to the size of the ROM image, meaning ideally your sample set should be 15 MB in 16-bit PCM audio or less. The remaining space is needed for the definition tables and headers.
 
-2. Due to the ROM's being organized in 1 MB blocks, a single sample cannot be larger than exactly 992KB after compression. WARNING: no protective measures against this are currently implemented, which will hopefully be addressed later.
+2. Due to the ROM's being organized in 1 MB blocks, a single sample cannot be larger than exactly 992KB after compression.
 
 3. All imported audio needs to be in mono with a bitrate of 16-bit, 24-bit, or 32-bit linear PCM.
 

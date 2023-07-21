@@ -44,81 +44,93 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
     multiCount = -1
     newBlock = 0
     sourceDir = tmpDir
-    for filename in sorted(os.listdir(sourceDir)):
-        if filename.endswith(".wav"):
-            print(filename)
-            sampleCount += 1
-            sampleIDs.append(filename)
-            audioFile = open(sourceDir + foldersplit + filename, "rb")
-            audioRead = audioFile.read()
-            audioFile.seek(24)
-            sampleRate.append(int.from_bytes(audioFile.read(4), "little"))
-            audioFile.seek(34)
-            bitRate = int.from_bytes(audioFile.read(2), "little") / 8
+    orDir = os.getcwd()
+    os.chdir(sourceDir)
+    for newBlock in range(8):
+        for filename in sorted(os.listdir(os.getcwd()), key=os.path.getsize, reverse=True):
+            if filename.endswith(".wav"):
+                if filename in sampleIDs:
+                    continue
+                audioFile = open(filename, "rb")
+                audioRead = audioFile.read()
+                audioFile.seek(34)
+                bitRate = int.from_bytes(audioFile.read(2), "little") / 8
             
-            dataOff = audioRead.find(b'data')
-            audioFile.seek(dataOff + 4)
-            dataSz = int.from_bytes(audioFile.read(4), "little")
+                dataOff = audioRead.find(b'data')
+                audioFile.seek(dataOff + 4)
+                dataSz = int.from_bytes(audioFile.read(4), "little")
+                
+                if template.tell() + (dataSz / bitRate) >= 1048576 * (newBlock + 1):
+                    audioFile.close()
+                    continue
+                
+                print(filename)
+                sampleCount += 1
+                sampleIDs.append(filename)
+                audioFile.seek(24)
+                sampleRate.append(int.from_bytes(audioFile.read(4), "little"))
         
-            audioFile.seek(0,2)
-            audioFile.seek(-108,1)
+                audioFile.seek(0,2)
+                audioFile.seek(-108,1)
 
             
-            chnkOff = audioRead.find(b'smpl')
-            if dataOff < chnkOff and chnkOff < dataOff + dataSz:
-                chnkOff = audioRead.find(b'smpl', 0, dataOff)
-                if chnkOff == -1:
-                    chnkOff = audioRead.find(b'smpl', dataOff + dataSz)
-            if chnkOff >= 0:
-                audioFile.seek(chnkOff + 20)
-                rootKey.append(int.from_bytes(audioFile.read(1), "little"))
-                if chnkOff + 64 < len(audioRead):
-                    audioFile.seek(chnkOff + 48)
-                    smplLoopType.append(int.from_bytes(audioFile.read(4), "little"))
-                    smplLoop.append(int.from_bytes(audioFile.read(4), "little"))
-                    smplEnd.append(int.from_bytes(audioFile.read(4), "little"))
+                chnkOff = audioRead.find(b'smpl')
+                if dataOff < chnkOff and chnkOff < dataOff + dataSz:
+                    chnkOff = audioRead.find(b'smpl', 0, dataOff)
+                    if chnkOff == -1:
+                        chnkOff = audioRead.find(b'smpl', dataOff + dataSz)
+                if chnkOff >= 0:
+                    audioFile.seek(chnkOff + 20)
+                    rootKey.append(int.from_bytes(audioFile.read(1), "little"))
+                    if chnkOff + 64 < len(audioRead):
+                        audioFile.seek(chnkOff + 48)
+                        smplLoopType.append(int.from_bytes(audioFile.read(4), "little"))
+                        smplLoop.append(int.from_bytes(audioFile.read(4), "little"))
+                        smplEnd.append(int.from_bytes(audioFile.read(4), "little"))
+                    else:
+                        smplLoopType.append(0)
+                        buff = int(dataSz / bitRate)
+                        smplLoop.append(buff - 2)
+                        smplEnd.append(buff - 1)
                 else:
                     smplLoopType.append(0)
+                    rootKey.append(60)
                     buff = int(dataSz / bitRate)
                     smplLoop.append(buff - 2)
                     smplEnd.append(buff - 1)
-            else:
-                smplLoopType.append(0)
-                rootKey.append(60)
-                buff = int(dataSz / bitRate)
-                smplLoop.append(buff - 2)
-                smplEnd.append(buff - 1)
             
-            fineTune.append(1024)
+                fineTune.append(1024)
         
-            if sampleRate[sampleCount] != 32000:
-                pitchFix = 12 * math.log(sampleRate[sampleCount] / 32000, 2)
-                pitchFixStep = math.floor(pitchFix)
-                pitchFixDecim = pitchFix - pitchFixStep
-                rootKey[sampleCount] -= pitchFixStep
-                fineTune[sampleCount] += int(pitchFixDecim * 1024)
+                if sampleRate[sampleCount] != 32000:
+                    pitchFix = 12 * math.log(sampleRate[sampleCount] / 32000, 2)
+                    pitchFixStep = math.floor(pitchFix)
+                    pitchFixDecim = pitchFix - pitchFixStep
+                    rootKey[sampleCount] -= pitchFixStep
+                    fineTune[sampleCount] += int(pitchFixDecim * 1024)
         
-            audioFile.close()
-            DPCM.Encode(sourceDir + foldersplit + filename,sampleCount,smplLoop[sampleCount],smplEnd[sampleCount],VerboseMode,BrightMode)
+                audioFile.close()
+                DPCM.Encode(filename,sampleCount,smplLoop[sampleCount],smplEnd[sampleCount],VerboseMode,BrightMode)
             
 
-            coefIn = open(sourceDir + foldersplit + filename + "_exp.bin", "rb")
-            deltaIn = open(sourceDir + foldersplit + filename + "_delt.bin", "rb")
-            deltaIn.seek(0,2)
-            fullSize = deltaIn.tell()
-            deltaIn.seek(0)
-        
-            if template.tell() + fullSize > 1048576 * (newBlock + 1):
-                newBlock += 1
-                template.seek(1048576 * newBlock + 32768)
-                templateCoef.seek(1048576 * newBlock + 1024)
+                coefIn = open(filename + "_exp.bin", "rb")
+                deltaIn = open(filename + "_delt.bin", "rb")
+                deltaIn.seek(0,2)
+                fullSize = deltaIn.tell()
+                deltaIn.seek(0)
 
-            template.seek(math.ceil(template.tell() / 32) * 32)
-            smplStart.append(template.tell())
-            templateCoef.write(coefIn.read())
-            template.write(deltaIn.read())
-            coefIn.close()
-            deltaIn.close()
+                if fullSize >= 1015808:
+                    print("Error: at least one sample is compressed larger than 992KB!")
+                    return
+
+                template.seek(math.ceil(template.tell() / 32) * 32)
+                smplStart.append(template.tell())
+                templateCoef.write(coefIn.read())
+                template.write(deltaIn.read())
+                coefIn.close()
+                deltaIn.close()
+        template.seek(1048576 * (newBlock + 1) + 32768)
+        templateCoef.seek(1048576 * (newBlock + 1) + 1024)
+    os.chdir(orDir)
 
     template.seek(96)
     template.write(((sampleCount + 1) * 2).to_bytes(2,"big"))
