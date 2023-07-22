@@ -181,24 +181,27 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
             sfzFile = open(sourceDir + foldersplit + filename, "r")
             sfzText = sfzFile.read()
             sfzFile.close()
-        
-            sampleID = re.findall("sample=.+",sfzText)
+            
             sampleNum = [65535,65535,65535,65535,65535,65535,65535,65535,
                      65535,65535,65535,65535,65535,65535,65535,65535]
             sampleHiInt = [127,127,127,127,127,127,127,127,
                        127,127,127,127,127,127,127,127]
+            
+            RegionList = sfzText.split("<region>")
+            if len(RegionList) > 1:
+                for i in range(min(16, len(RegionList) - 1)):
+                    sampleID = re.findall("sample=.+\.wav",RegionList[i + 1])
+                    if len(sampleID) > 0:
+                        sampleID[0] = (sampleID[0].split("="))[1]
+                        for j in range(len(sampleIDs)):
+                            if sampleID[0] == sampleIDs[j]:
+                                sampleNum[i] = j * 2
+                                if multiName.find("REV") > -1:
+                                    sampleNum[i] += 1
         
-            for i in range(min(16,len(sampleID))):
-                sampleID[i] = (sampleID[i].split("="))[1]
-                for j in range(len(sampleIDs)):
-                    if sampleID[i] == sampleIDs[j]:
-                        sampleNum[i] = j * 2
-                        if multiName.find("REV") > -1:
-                            sampleNum[i] += 1
-        
-            sampleHi = re.findall("hikey=.+",sfzText)
-            for i in range(min(16,len(sampleHi))):
-                sampleHiInt[i] = int((sampleHi[i].split("="))[1])
+                    sampleHi = re.findall("hikey=[0-9]+",RegionList[i + 1])
+                    if len(sampleHi) > 0:
+                        sampleHiInt[i] = int(((sampleHi[0]).split("="))[1])
             
 
             multiTable.write(multiName.encode("ascii"))
