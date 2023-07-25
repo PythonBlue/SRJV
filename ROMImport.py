@@ -266,6 +266,9 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
         template.write(patch990Table.read())
         patch990Table.close()
     else:
+        template.seek(96 + 1048576)
+        template.write(patch990Offset.to_bytes(4,"big"))
+        template.write(patch990Offset.to_bytes(4,"big"))
         template.seek(140 + 1048576)
         template.write(patch990Offset.to_bytes(4,"big"))
         template.write(patch990Offset.to_bytes(4,"big"))
@@ -292,6 +295,9 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
         template.write(patch2080Table.read())
         patch2080Table.close()
     else:
+        template.seek(96 + 1048576 * 2)
+        template.write(patch2080Offset.to_bytes(4,"big"))
+        template.write(patch2080Offset.to_bytes(4,"big"))
         template.seek(140 + 1048576 * 2)
         template.write(patch2080Offset.to_bytes(4,"big"))
         template.write(patch2080Offset.to_bytes(4,"big"))
