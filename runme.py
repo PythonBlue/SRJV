@@ -28,7 +28,7 @@ if len(sys.argv) > 1:
     else:
         FinalFile = args.output.split('.')[0] + ".bin"
     if args.bright != None:
-        BrightMode = min(abs(args.bright), 16)
+        BrightMode = min(abs(args.bright), 5)
     PatchImport = args.patches
     VerboseMode = args.verbose
 else:
@@ -40,7 +40,7 @@ else:
         FinalFile = FinalFile.split('.')[0] + ".bin"
     BrightModeStr = input("High frequency fix iterations? (default is 4): ")
     try:
-        BrightMode = min(abs(int(BrightModeStr), 16))
+        BrightMode = min(abs(int(BrightModeStr), 5))
     except:
         BrightMode = 0
     PatchImportStr = input("Import Patches? (Y if yes) ")
