@@ -372,7 +372,7 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
             if i > 0:
                 Endian -= wavSamplesPrep[i - 1]
             Endian += prevEndian
-            EndFinal = Endian * 2
+            EndFinal = Endian << 1
             prevEndian = prevDelta
             prevDelta = int(Endian)
             wavSamplesA.append(int(EndFinal) >> (bitRate - 16))
@@ -383,13 +383,13 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
                 Endian = wavSamplesB[i]
                 if i > 0:
                     Endian -= wavSamplesB[i - 1]
-                    wavSamplesC[i] = int(Endian / 2)
+                    wavSamplesC[i] = int(Endian)
             for i in range(sampleCount):
-                wavSamplesB[i] = wavSamplesC[i]
+                wavSamplesB[i] = wavSamplesC[i] >> (BrightMode - 1)
         for i in range(sampleCount):
             wavSamples.append(wavSamplesA[i] - wavSamplesB[i])
-            if abs(wavSamples[i] - wavSamples[i - 1]) > 1 << 16:
-                lower = max(lower, abs(wavSamples[i] - wavSamples[i - 1]) / ((1 << 16) - 512))
+            if abs(wavSamples[i] - wavSamples[i - 1]) * 0.71 > 1 << 16:
+                lower = max(lower, abs(wavSamples[i] - wavSamples[i - 1]) * 0.71 / ((1 << 16) - 512))
         if lower > 1:
             for i in range(sampleCount):
                 wavSamples[i] = int(wavSamples[i] / lower)
@@ -401,6 +401,9 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
         prevEndian = 0
         for i in range(sampleCount):
             wavSamples.append(int(wavSamplesPrep[i]) >> (bitRate - 16))
+
+    if abs(wavSamplesPrep[smplEnd] - wavSamplesPrep[smplLoop - 1]) <= 0.015625:
+        wavSamples[smplEnd] = wavSamples[smplLoop - 1]
 
     DPCMEncode(coefs, deltas, wavSamples, 0, sampleStart, smplLoop, smplEnd, VerboseMode)
     foldersplit = "/"
