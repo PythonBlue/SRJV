@@ -59,8 +59,20 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
                 dataOff = audioRead.find(b'data')
                 audioFile.seek(dataOff + 4)
                 dataSz = int.from_bytes(audioFile.read(4), "little")
+
+                finalSample = 0
+                chnkOff = audioRead.find(b'smpl')
+                if dataOff < chnkOff and chnkOff < dataOff + dataSz:
+                    chnkOff = audioRead.find(b'smpl', 0, dataOff)
+                    if chnkOff == -1:
+                        chnkOff = audioRead.find(b'smpl', dataOff + dataSz)
+                if chnkOff >= 0 and chnkOff + 64 < len(audioRead):
+                    audioFile.seek(chnkOff + 56)
+                    finalSample = int.from_bytes(audioFile.read(4), "little")
+                else:
+                    finalSample = (dataSz / bitRate)
                 
-                if template.tell() + (dataSz / bitRate) >= 1048576 * (newBlock + 1) - 32:
+                if template.tell() + finalSample + 33 >= 1048576 * (newBlock + 1):
                     audioFile.close()
                     continue
                 
@@ -72,13 +84,7 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
         
                 audioFile.seek(0,2)
                 audioFile.seek(-108,1)
-
-            
-                chnkOff = audioRead.find(b'smpl')
-                if dataOff < chnkOff and chnkOff < dataOff + dataSz:
-                    chnkOff = audioRead.find(b'smpl', 0, dataOff)
-                    if chnkOff == -1:
-                        chnkOff = audioRead.find(b'smpl', dataOff + dataSz)
+                
                 if chnkOff >= 0:
                     audioFile.seek(chnkOff + 20)
                     rootKey.append(int.from_bytes(audioFile.read(1), "little"))

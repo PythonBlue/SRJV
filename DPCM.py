@@ -72,7 +72,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
                 maxdelta = max(maxdelta, abs(delta + 1))
             invalue = sample
         #decide on coefficient
-        exp = int(logo(maxdelta * 128 / 127))
+        exp = int(logo(maxdelta * 64 / 63))
         if (exp < 0):
             exp = 0
         elif (exp > 15):
@@ -204,7 +204,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, sampleLoop, smplEnd,
 
 
     #decide on coefficient
-    exp = int(logo(maxdelta * 128 / 127))
+    exp = int(logo(maxdelta * 64 / 63))
     if (exp < 0):
         exp = 0
     if (exp > 15):
