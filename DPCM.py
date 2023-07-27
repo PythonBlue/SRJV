@@ -383,13 +383,15 @@ def Encode(fname, fcount, smplLoop, smplEnd, VerboseMode, BrightMode):
                 Endian = wavSamplesB[i]
                 if i > 0:
                     Endian -= wavSamplesB[i - 1]
-                    wavSamplesC[i] = int(Endian)
-            for i in range(sampleCount):
-                wavSamplesB[i] = wavSamplesC[i] >> (BrightMode - 1)
+                    if Endian < 0:
+                        wavSamplesC[i] = math.ceil(Endian / 2)
+                    else:
+                        wavSamplesC[i] = math.floor(Endian / 2)
+                wavSamplesB[i] = wavSamplesC[i]
         for i in range(sampleCount):
             wavSamples.append(wavSamplesA[i] - wavSamplesB[i])
             if abs(wavSamples[i] - wavSamples[i - 1]) * 0.71 > 1 << 16:
-                lower = max(lower, abs(wavSamples[i] - wavSamples[i - 1]) * 0.71 / ((1 << 16) - 512))
+                lower = max(lower, abs(wavSamples[i] - wavSamples[i - 1]) * 0.71 / ((1 << 16)))
         if lower > 1:
             for i in range(sampleCount):
                 wavSamples[i] = int(wavSamples[i] / lower)
