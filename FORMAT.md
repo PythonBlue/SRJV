@@ -21,7 +21,7 @@ The SR-JV80 ROM format consists of a scrambled collection of 8 1MB blocks, big e
 * 0x0000030 - 10 bytes - ROM date
 * 0x000003a - 6 bytes - unknown purpose, usually "0xffffffffffff"
 * 0x0000040 - 4 byte - unknown purpose, usually "0x01400000"
-* 0x0000044 - 1 byte - seeming flag, always "0x08" if the block is the last with model data, otherwise "0x10"
+* 0x0000044 - 1 byte - block number to point to with more model data (i.e. "0x10" in the first block to the second, "0x20" in the second to third, etc.) Last block with important data has this set to "0x08"
 * 0x0000050 - 2 bytes - unknown purpose, seemingly always "0x0201" in the first block
 * 0x0000053 - 1 byte - supported model ID. Known values: 0x02 (JV80), 0x03 (JD990), 0x05 (JV1080)
 * 0x0000054 - 1 byte - number of drumkits per bank?
