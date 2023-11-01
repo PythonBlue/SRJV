@@ -11,7 +11,7 @@ import Import80
 import Import990
 import Import2080
 
-def run(tmpDir, PatchImport, VerboseMode, BrightMode):
+def run(tmpDir, PatchImport, VerboseMode):
     shutil.copyfile("Template.bin", "Result.bin")
     template = open("Result.bin", "rb+")
     templateCoef = open("Result.bin", "rb+")
@@ -96,14 +96,14 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
                     else:
                         smplLoopType.append(0)
                         buff = int(dataSz / bitRate)
-                        smplLoop.append(buff - 2)
-                        smplEnd.append(buff - 1)
+                        smplLoop.append(buff - 1)
+                        smplEnd.append(buff)
                 else:
                     smplLoopType.append(0)
                     rootKey.append(60)
                     buff = int(dataSz / bitRate)
-                    smplLoop.append(buff - 2)
-                    smplEnd.append(buff - 1)
+                    smplLoop.append(buff - 1)
+                    smplEnd.append(buff)
             
                 fineTune.append(1024)
         
@@ -115,7 +115,9 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
                     fineTune[sampleCount] += int(pitchFixDecim * 1024)
         
                 audioFile.close()
-                DPCM.Encode(filename,sampleCount,smplLoop[sampleCount],smplEnd[sampleCount],VerboseMode,BrightMode)
+                if smplLoopType[sampleCount] == 1:
+                    print("WARNING: ping-pong looping not fully supported!")
+                DPCM.Encode(filename,sampleCount,smplLoopType[sampleCount],smplLoop[sampleCount],smplEnd[sampleCount],VerboseMode)
             
 
                 coefIn = open(filename + "_exp.bin", "rb")
@@ -124,7 +126,7 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
                 fullSize = deltaIn.tell()
                 deltaIn.seek(0)
 
-                if fullSize >= 1015808:
+                if fullSize >= 1015806:
                     print("Error: at least one sample is compressed larger than 992KB!")
                     return
 
@@ -143,13 +145,13 @@ def run(tmpDir, PatchImport, VerboseMode, BrightMode):
     for i in range(sampleCount + 1):
         for j in range(2):
             sampleTable.write(b'\x7f')
-            sampleTable.write(smplStart[i].to_bytes(3, "big"))
+            sampleTable.write((smplStart[i]).to_bytes(3, "big"))
             sampleTable.write((smplStart[i] + smplLoop[i]).to_bytes(3, "big"))
             sampleTable.write((smplStart[i] + smplEnd[i]).to_bytes(3, "big"))
             sampleTable.write(b'\x00\x00')
             if j == 1:
                 sampleTable.write(b'\x06')
-            elif (smplLoop[i] == 0 or (smplEnd[i] - smplLoop[i] < 4)):
+            elif (smplEnd[i] == 0 or (smplEnd[i] - smplLoop[i] < 4)):
                 sampleTable.write(b'\x02')
             elif smplLoopType[i] == 1:
                 sampleTable.write(b'\x01')

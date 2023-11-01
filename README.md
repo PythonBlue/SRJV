@@ -26,6 +26,8 @@ In addition, VERY experimental patch support is also included. As it is now, the
 
 5. There can be no more than 255 multisamples in a ROM, and each multisample is limited to 16 samples.
 
+6. There is an optional "Brighten.py" script which can be used to fix higher frequencies of wav files in advance if you decide it sounds too muddy when imported. Resulting files will be placed in a "Brighter" subdirectory and must replace the original files in their original locations when ready.
+
 ## Usage
 
 1. Compile all of the samples you wish to use, accompanied by an SFZ file for the sake of the multisample entries.
