@@ -51,6 +51,7 @@ def run(tmpDir, PatchImport, VerboseMode):
             if filename.endswith(".wav"):
                 if filename in sampleIDs:
                     continue
+                dataChunkValid = False
                 audioFile = open(filename, "rb")
                 audioRead = audioFile.read()
                 audioFile.seek(34)
@@ -86,6 +87,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                 audioFile.seek(-108,1)
                 
                 if chnkOff >= 0:
+                    dataChunkValid = True
                     audioFile.seek(chnkOff + 20)
                     rootKey.append(int.from_bytes(audioFile.read(1), "little"))
                     if chnkOff + 64 < len(audioRead):
@@ -96,14 +98,44 @@ def run(tmpDir, PatchImport, VerboseMode):
                     else:
                         smplLoopType.append(0)
                         buff = int(dataSz / bitRate)
-                        smplLoop.append(buff - 1)
-                        smplEnd.append(buff)
+                        smplLoop.append(buff - 2)
+                        smplEnd.append(buff - 1)
                 else:
                     smplLoopType.append(0)
                     rootKey.append(60)
                     buff = int(dataSz / bitRate)
-                    smplLoop.append(buff - 1)
-                    smplEnd.append(buff)
+                    smplLoop.append(buff - 2)
+                    smplEnd.append(buff - 1)
+
+                sampleFound = False
+                for multiname in sorted(os.listdir(os.getcwd())):
+                    if sampleFound == True:
+                        break
+                    if multiCount == 254 : continue
+                    if multiname.endswith(".sfz"):
+                        sfzFile = open(os.getcwd() + foldersplit + multiname, "r")
+                        sfzText = sfzFile.read()
+                        sfzFile.close()
+                        RegionList = sfzText.split("<region>")
+                        if len(RegionList) > 0:
+                            for i in range(min(16, len(RegionList))):
+                                if filename in RegionList[i] and dataChunkValid == True:
+                                    if "loop_mode=sustain" in RegionList[i] or "loop_mode=continuous" in RegionList[i]:
+                                        if "loop_type=alternate" in RegionList[i]:
+                                            smplLoopType[sampleCount] = 1
+                                        else:
+                                            smplLoopType[sampleCount] = 0
+                                    rootKeyFind = re.findall('pitch_keycenter=(\d+)', RegionList[i])
+                                    if len(rootKeyFind) > 0:
+                                        rootKey[sampleCount] = int(rootKeyFind[0])
+                                    buff = int(dataSz / bitRate)
+                                    smplLoopFind = re.findall('loop_start=(\d+)', RegionList[i])
+                                    if len(smplLoopFind) > 0 and ("loop_mode=sustain" in RegionList[i] or "loop_mode=continuous" in RegionList[i]):
+                                        smplLoop[sampleCount] = int(smplLoopFind[0])
+                                    smplEndFind = re.findall('loop_end=(\d+)', RegionList[i])
+                                    if len(smplEndFind) > 0 and ("loop_mode=sustain" in RegionList[i] or "loop_mode=continuous" in RegionList[i]):
+                                        smplEnd[sampleCount] = int(smplEndFind[0])
+                                    sampleFound = True
             
                 fineTune.append(1024)
         

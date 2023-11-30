@@ -34,7 +34,7 @@ In addition, VERY experimental patch support is also included. As it is now, the
 
 >1a. Each SFZ filename should preferably begin with "xxx-" where the x's are numbers, though anything else for the first four characters that organize them the way you wish for the ROM will do. The format also only allows up to twelve characters, so anything more than 16 characters (including the prefix) will be truncated! Additionally, the required opcodes for full use of these tools are "sample" and "hikey".
 
->1b. All samples in the SFZ files should point to WAV samples located in the same directory. For anything other than one-shot samples mapped to middle C, the "smpl" chunk is needed. Currently only WAV files exported from Wavosaur are verified to work, though feel free to test with other audio exporting tools that support the "smpl" chunk: https://www.wavosaur.com/
+>1b. All samples in the SFZ files should point to WAV samples located in the same directory. As of November 30th, 2023, the 'smpl' chunk is no longer required for WAV files other than ones mapped to middle C and without looping (SFZ opcodes can now work as well), but it's still highly recommended as the SFZ route depends on only the first occurrence of a smpl-less WAV file in the multisample entries.
 
 2. If you're particularly technically savvy, an additional but optional step is to edit the headers of the included Template ROM. This will be necessary if you wish to import a recognizable card other than that ID.
 
