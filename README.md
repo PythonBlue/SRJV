@@ -18,11 +18,11 @@ UPDATE: 1/7/2023 Out of pressure for it, the creator also caved and included a w
 
 ## Additional Notes About Sample Importing
 
-1. Total filesize needs to conform to the size of the ROM image, meaning ideally your sample set should be 15 MB in 16-bit PCM audio or less. The remaining space is needed for the definition tables and headers.
+1. Total filesize needs to conform to the size of the ROM image, meaning ideally your sample set should be 23 MB in 24-bit PCM audio or less. The remaining space is needed for the definition tables and headers.
 
 2. Due to the ROM's being organized in 1 MB blocks, a single sample cannot be larger than exactly 992KB after compression.
 
-3. All imported audio needs to be in mono with a bitrate of 16-bit, 24-bit, or 32-bit linear PCM.
+3. All imported audio needs to be in mono with a bitrate of 24-bit, or 32-bit linear PCM.
 
 4. If you wish to have a reverse playback variation of a multisample without needing to import duplicate samples, make sure to have "REV" in the name of the alternate sfz file. Currently the way the script works is to import both versions at once and pick one as needed to avoid too much complexity.
 
