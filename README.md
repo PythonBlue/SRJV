@@ -8,7 +8,9 @@ https://www.sector101.co.uk/sr-jv-romulator.html
 
 With enough further hacking, it is possible to load the imported multisamples as is into the RolandCloud VST's for testing.
 
-In addition, VERY experimental patch support is also included. As it is now, the format of the ROM suggests it usually has two different patch tables per card: what's seemingly required is the patch data that's directly compatible for, namely, the JV-80, the other known compatible patches being for the JV-2080 and, famously for SR-JV80-04, the JD-990. Currently the way patch importing works assumes any of these three models, though the creator does not guarantee the required SysEx for the JV80 and JD990 will be identical in the ROM due to inability to verify with such synths.
+In addition, experimental patch support is also included. As it is now, the format of the ROM suggests it usually has two different patch tables per card: what's seemingly required is the patch data that's directly compatible for, namely, the JV-80, the other known compatible patches being for the JV-2080 and, famously for SR-JV80-04, the JD-990. Currently the way patch importing works assumes any of these three models, though the creator does not guarantee the required SysEx for the JV-80 will be identical in the ROM due to inability to verify with such a synth.
+
+UPDATE: 1/7/2023 Out of pressure for it, the creator also caved and included a wave extractor script that also puts in the effort of converting the tables into SFZ files. Use on official ROM's at your own risk: this is included solely in order to verify the data.
 
 ## Pre-requisites
 
@@ -34,11 +36,11 @@ In addition, VERY experimental patch support is also included. As it is now, the
 
 >1a. Each SFZ filename should preferably begin with "xxx-" where the x's are numbers, though anything else for the first four characters that organize them the way you wish for the ROM will do. The format also only allows up to twelve characters, so anything more than 16 characters (including the prefix) will be truncated! Additionally, the required opcodes for full use of these tools are "sample" and "hikey".
 
->1b. All samples in the SFZ files should point to WAV samples located in the same directory. As of November 30th, 2023, the 'smpl' chunk is no longer required for WAV files other than ones mapped to middle C and without looping (SFZ opcodes can now work as well), but it's still highly recommended as the SFZ route depends on only the first occurrence of a smpl-less WAV file in the multisample entries.
+>1b. All samples in the SFZ files should point to WAV samples located in the same directory. As of November 30th, 2023, the 'smpl' chunk is no longer required, but it's still recommended if you want to save space on the ROM by avoiding duplicate sample table entries.
 
 2. If you're particularly technically savvy, an additional but optional step is to edit the headers of the included Template ROM. This will be necessary if you wish to import a recognizable card other than that ID.
 
-3. If you wish to import patches as well, make sure there is a SysEx bank dump of JV2080, JD990, and/or JV80 presets included. These dumps should be stored in the following path relative to the samples to import: "Patches/2080.syx" for JV2080 patches, "Patches/80.syx" for JV80 patches, and "Patches/990.syx" for JD990 patches. Note that if you wish to import more patches than the user bank size of the model allows (64 for JV80 and JD990, 128 for JV2080), you'll need to merge multiple SysEx files into one (the assumed maximum is 256).
+3. If you wish to import patches as well, make sure there is a SysEx bank dump of JV-2080, JD-990, and/or JV-80 presets included. These dumps should be stored in the following path relative to the samples to import: "Patches/2080.syx" for JV-2080 patches, "Patches/80.syx" for JV-80 patches, and "Patches/990.syx" for JD990 patches. Note that if you wish to import more patches than the user bank size of the model allows (64 for JV-80 and JD-990, 128 for JV-2080), you'll need to merge multiple SysEx files into one (the assumed maximum is 256).
 
 4. It should now hopefully be as simple as running "runme.py".
 
@@ -51,4 +53,6 @@ The resulting file for loading into a card via ROMulator should now be available
 
 ## Footnotes
 
-Additional credit goes to https://github.com/hackyourlife for the SR-JV80 Scrambling C code, and for the Java classes making it possible to feasibly encode in the FCE-DPCM format. Technically, said code was since converted into Python for the sake of portability, but credit is still due for using them as a basis.
+Credit goes to https://github.com/hackyourlife for the SR-JV80 Scrambling C code, and for the Java classes making it possible to feasibly encode in the FCE-DPCM format. Technically, said code was since converted into Python for the sake of portability, but credit is still due for using them as a basis.
+
+Additional credit goes to https://archive.org/details/@jv80tinkerer for their jv80_wave_extractor script as a foundation for the new extractor script, even though some changes had to be made for a seamless process, particularly increasing the bit depth to 24-bit and avoiding duplicate samples to make reimporting easier.

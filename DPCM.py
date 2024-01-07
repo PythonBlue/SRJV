@@ -52,7 +52,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         loopAdjust = 0
     if VerboseMode: print("sample loop DC offset: " + str(loopDC) + " (adj=" + str(loopAdjust) + ")")
     frameCount = math.ceil(smplEnd / 16)
-    if smplEnd % 16 == 0:
+    if smplEnd % 16 == 0 or int(smplEnd / 16) == int(sampleLoop / 16):
         frameCount += 1
     
     #encode all frames except the last one
@@ -60,6 +60,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         maxdelta = 0
         for i in range(16):
             off = frame * 16 + i
+            if off > smplEnd:
+                break
             sample = samples[off]
             if (off >= sampleLoop):
                 adj = int(loopAdjust * (off - sampleLoop))
@@ -91,6 +93,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         #compute compressed sample values
         for i in range(16):
             off = frame * 16 + i
+            if off > smplEnd:
+                break
             sample = samples[off]
             if (off >= sampleLoop):
                 adj = int(loopAdjust * (off - sampleLoop))
@@ -118,6 +122,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     minexp = 15
     for i in range(sampleLoop, (frameCount - 1) * 16, 16):
         sampleId = i - sampleStart
+        if sampleId > smplEnd:
+            break
         frame = int(sampleId / 16)
         coef = int.from_bytes(coefs[int(frame / 2)], "big")
 
@@ -132,6 +138,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     minexpcnt = 0
     for i in range(sampleLoop, (frameCount - 1) * 16, 16):
         sampleId = i - sampleStart
+        if sampleId > smplEnd:
+            break
         frame = int(sampleId / 16)
         coef = int.from_bytes(coefs[int(frame / 2)], "big")
 
@@ -148,6 +156,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     decodeValue = loopValue
     for i in range(sampleLoop, (frameCount - 1) * 16):
         sampleId = i - sampleStart
+        if sampleId > smplEnd:
+            break
         frame = int(sampleId / 16)
         coef = int.from_bytes(coefs[int(frame / 2)], "big")
 
@@ -163,6 +173,11 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         decodeValue += delta
     if VerboseMode: print("value=" + str(value) + ", decodeValue=" + str(decodeValue))
 
+
+    if int(smplEnd / 16) == int(sampleLoop / 16):
+        print("")
+        return
+    
     frame = frameCount - 1
     end = smplEnd & 0x0f
 
@@ -302,7 +317,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         print("no DC offset")
     print("")
 
-def Encode(fname, fcount, loopType, smplLoop, smplEnd, VerboseMode):
+def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
     wav = open(fname, "rb")
     #print(fname)
     audioFile = wav.read()
@@ -321,8 +336,8 @@ def Encode(fname, fcount, loopType, smplLoop, smplEnd, VerboseMode):
     if smplLoop == 0 and smplEnd == 0:
         smplLoop = sampleCount - 1
         smplEnd = sampleCount
-    smplLoop += 1
-    smplEnd += 1
+    #smplLoop += 1
+    #smplEnd += 1
     
     coefLen = math.ceil((smplEnd + 1) / 32)
 	
@@ -330,9 +345,9 @@ def Encode(fname, fcount, loopType, smplLoop, smplEnd, VerboseMode):
     for i in range(coefLen):
         coefs.append(b'\x00')
     deltas = []
-    for i in range(smplEnd + 1):
+    for i in range(math.ceil((smplEnd + 1) / 16) * 16):
         deltas.append(b'\x00')
-    print("sample loop: " + str(smplLoop - 1) + " to " + str(smplEnd - 1))
+    print("sample loop: " + str(smplLoop) + " to " + str(smplEnd))
 
     wav.seek(dataChk + 8)
     wavSamplesPrep = []
@@ -349,10 +364,10 @@ def Encode(fname, fcount, loopType, smplLoop, smplEnd, VerboseMode):
                 Endian = (End4 << 16) + (End3 << 16) + (End2 << 8) + End1
         if Endian >= 1 << (bitRate - 1):
             Endian -= 1 << bitRate
-        if i == 0 and Endian != 0:
-            wavSamplesPrep.append(0)
+        #if i == 0 and Endian != 0:
+            #wavSamplesPrep.append(0)
         wavSamplesPrep.append(Endian)
-        if loopType == 1 and i >= smplEnd - 2:
+        if loopType == 1 and i >= smplEnd - 1:
             continue
     for i in range(16):
         if loopType == 1:
