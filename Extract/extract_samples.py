@@ -7,6 +7,7 @@ import re
 import json
 import descramble
 import argparse
+import platform
 
 BLOCK_SIZE = 1024 * 1024
 used_samples = set()
@@ -463,6 +464,8 @@ def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll
             #sfz_content_la += "\n"
 
         sfz_filename = f"{multisample_id}-{multisample_name_compact}.sfz"
+        if platform.system() != "Windows":
+            sfz_filename = sfz_filename.replace("/",":")
         #sfz_filename_la = f"{multisample_id}-{multisample_name_compact}_la.sfz"
         with open(sfz_filename, 'w') as sfz_file:
             sfz_file.write(sfz_content)
