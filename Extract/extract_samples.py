@@ -150,18 +150,18 @@ def read_sample_table(file, sample_table_pos, header):
         sample["fine_tune"] = struct.unpack(">H", file.read(2))[0]
         sample["loop_fine_tune"] = struct.unpack(">H", file.read(2))[0]
         sample["sample_offset"] = 0
-        sample["sample_delay"] = (sample["sample_start"] % 32)
+        sample["sample_delay"] = (sample["sample_start"] % 16)
         for j in range(len(samples)):
             if sample["sample_end"] == samples[j]["sample_end"]:
                 if sample["sample_start"] < samples[j]["sample_start"]:
                     sample["sample_offset"] = 0
                     samples[j]["sample_offset"] = samples[j]["sample_start"] - sample["sample_start"]
                     samples[j]["sample_start"] -= samples[j]["sample_offset"]
-                    sample["sample_delay"] = sample["sample_start"] % 32
+                    sample["sample_delay"] = sample["sample_start"] % 16
                 elif sample["sample_start"] > samples[j]["sample_start"]:
                     sample["sample_offset"] = sample["sample_start"] - samples[j]["sample_start"]
                     sample["sample_start"] -= sample["sample_offset"]
-                    sample["sample_delay"] = samples[j]["sample_start"] % 32
+                    sample["sample_delay"] = samples[j]["sample_start"] % 16
         sample["sample_trim"] = 0
         samples.append(sample)
     return samples
@@ -340,18 +340,21 @@ def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll
             block_of_sample = get_block_number(startMin, BLOCK_SIZE)
             data_offset_in_block = (block_of_sample * BLOCK_SIZE + 1024 + (31 * 1024))
 
-            length = endMax - startMin + 1 + (startMin % 32)
+            length = endMax - startMin + 1 + (startMin % 16)
+            if length % 16 > 0:
+                while length % 16 > 0:
+                    length += 1
 
             if length <= 0:
                 print("sample start before end. skipping.")
                 continue
             
 
-            file.seek(startMin-(startMin % 32))
+            file.seek(startMin-(startMin % 16))
             deltas = file.read(length)
 
             exponents_block = all_exponents[block_of_sample]
-            pcm_data_24bit = decode_dpcm(deltas, exponents_block, startMin - (startMin % 32), block_of_sample)
+            pcm_data_24bit = decode_dpcm(deltas, exponents_block, startMin - (startMin % 16), block_of_sample)
 
             start_sample_offset = startMin - 1024 - 31*1024 - block_of_sample*BLOCK_SIZE
             
@@ -441,8 +444,8 @@ def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll
 
             if ((0 <= loop_start <= end_sample and sfz_loop_type is not None) and
                     not (samples[sample_id_prep]['loop_type_str'] == "reverse")):
-                sfz_content += ("\nloop_start=" + str(loop_start) +
-                                "\nloop_end=" + str(end_sample) +
+                sfz_content += ("\nloop_start=" + str(loop_start + samples[sample_id_prep]["sample_delay"]) +
+                                "\nloop_end=" + str(end_sample + samples[sample_id_prep]["sample_delay"]) +
                                 "\nloop_type=" + str(sfz_loop_type) +
                                 "\nlooptune=" + str(round((loop_fine_tune*100 / 1024), 3)) +
                                 "\nloop_mode=loop_continuous")
