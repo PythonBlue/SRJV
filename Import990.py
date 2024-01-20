@@ -39,7 +39,7 @@ def run(in_string):
         SQCheck = True
         
     in_file.seek(0,2)
-    patchCount = int((in_file.tell()) / 519)
+    patchCount = int((in_file.tell() - startOffset) / 519)
         
     in_file.seek(startOffset)
     
@@ -224,14 +224,16 @@ def run(in_string):
             resultT = out_file.tell()
 
             #Pitch
-            offset = scanT + 8
-            parseBits(2)
+            for k in range(2):
+                bitResult.append(0)
             offset = scanT
             parseBits(1)
             offset = scanT + 12 * 8
             parseBits(5)
             offset = scanT + 2 * 8
-            parseBits(8)
+            parseBits(7)
+            offset = scanT + 1 * 8
+            parseBits(1)
             offset = scanT + 4 * 8
             parseBits(7)
             offset = scanT + 5 * 8
@@ -320,7 +322,10 @@ def run(in_string):
             offset = scanT + 63 * 8
             parseBits(1)
             offset = scanT + 60 * 8
-            parseBits(8)
+            parseBits(7)
+            offset = scanT + 57 * 8
+            parseBits(1)
+            offset = scanT + 61 * 8
             parseBits(8)
             
             offset = scanT + 68 * 8
@@ -329,7 +334,7 @@ def run(in_string):
             parseBits(1)
             offset = scanT + 69 * 8
             parseBits(7)
-            offset = scanT + 57 * 8
+            offset = scanT + 66 * 8
             parseBits(1)
             offset = scanT + 70 * 8
             parseBits(8)
