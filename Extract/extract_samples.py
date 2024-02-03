@@ -85,6 +85,9 @@ def read_header(block_num, file):
     header["supported_model_id"] = struct.unpack(">B", file.read(1))[0]
     header["supported_model_id_str"] = modelid_to_str(header["supported_model_id"])
 
+    file.seek(offset + 0x40)
+    header["sample_rate"] = struct.unpack(">H", file.read(2))[0] * 100
+    
     file.seek(offset + 0x60)
     header["number_of_samples"] = struct.unpack(">H", file.read(2))[0]
     header["number_of_multisamples"] = struct.unpack(">H", file.read(2))[0]
@@ -388,7 +391,7 @@ def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll
                 #inst_chunk = create_instrument_chunk(sample['root_key'], 0, 0, low_key, high_key, 0, 127)
 
             wav_loop_type = loop_type_to_wav_type(sample['loop_type'])
-            framerate = 32000
+            framerate = header["sample_rate"]
             smpl_chunk = None
 
             #if loop_unroll_flag and (samples[sample_id_prep]'loop_type_str'] == "pingpong" or samples[sample_id_prep]'loop_type_str'] == "reverse"):

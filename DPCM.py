@@ -394,7 +394,7 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
         return
     try:
         output2 = open(fname + "_delt.bin",  "wb")
-        for i in range(smplEnd + 1):
+        for i in range(coefLen * 32):
             output2.write(deltas[i])
         output2.close()
     except:

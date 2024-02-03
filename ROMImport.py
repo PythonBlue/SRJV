@@ -22,6 +22,8 @@ def run(tmpDir, PatchImport, VerboseMode):
     template.write('{0:02d}'.format(today.month).encode('utf-8'))
     template.seek(56)
     template.write('{0:02d}'.format(today.day).encode('utf-8'))
+    template.seek(64)
+    romSR = int.from_bytes(audioFile.read(2), "big") * 100
     
     template.seek(32768)
     templateCoef.seek(1024)
@@ -132,8 +134,8 @@ def run(tmpDir, PatchImport, VerboseMode):
                     fineTune.append(fineTuneResult)
                     loopTune.append(loopTuneResult)
         
-                    if sampleRate[sampleCount] != 32000:
-                        pitchFix = 12 * math.log(sampleRate[sampleCount] / 32000, 2)
+                    if sampleRate[sampleCount] != romSR:
+                        pitchFix = 12 * math.log(sampleRate[sampleCount] / romSR, 2)
                         pitchFixStep = math.floor(pitchFix)
                         pitchFixDecim = pitchFix - pitchFixStep
                         rootKey[sampleCount] -= pitchFixStep
@@ -212,6 +214,19 @@ def run(tmpDir, PatchImport, VerboseMode):
                                         loopTuneResult = 1024 + round(float(loopTuneFind[0]) * 1024 / 100)
 
                                     duped = False
+        
+                                    if sampleRatePrep != romSR:
+                                        pitchFix = 12 * math.log(sampleRatePrep / romSR, 2)
+                                        pitchFixStep = math.floor(pitchFix)
+                                        pitchFixDecim = pitchFix - pitchFixStep
+                                        rootKeyPrep -= pitchFixStep
+                                        fineTuneResult += int(pitchFixDecim * 1024)
+                                    if fineTuneResult < 0:
+                                        rootKeyPrep += 1
+                                        fineTuneResult += 1024
+                                    elif fineTuneResult >= 2048:
+                                        rootKeyPrep -= 1
+                                        fineTuneResult -= 1024
 
                                     compare1 = [template.tell(), smplStartPrep, smplLoopTypePrep, rootKeyPrep, smplLoopPrep, smplEndPrep, smplVolPrep, fineTuneResult, loopTuneResult]
 
@@ -239,19 +254,6 @@ def run(tmpDir, PatchImport, VerboseMode):
                                     
                                     fineTune.append(fineTuneResult)
                                     loopTune.append(loopTuneResult)
-        
-                                    if sampleRate[sampleCount] != 32000:
-                                        pitchFix = 12 * math.log(sampleRate[sampleCount] / 32000, 2)
-                                        pitchFixStep = math.floor(pitchFix)
-                                        pitchFixDecim = pitchFix - pitchFixStep
-                                        rootKey[sampleCount] -= pitchFixStep
-                                        fineTune[sampleCount] += int(pitchFixDecim * 1024)
-                                    if fineTune[sampleCount] < 0:
-                                        rootKey[sampleCount] += 1
-                                        fineTune[sampleCount] += 1024
-                                    elif fineTune[sampleCount] >= 2048:
-                                        rootKey[sampleCount] -= 1
-                                        fineTune[sampleCount] -= 1024
         
                 audioFile.close()
                 #if smplLoopType[sampleCount] == 1:
@@ -364,7 +366,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                                     if volumeCheck == smplVol[j]:
                                         if startCheck == smplStartN[j]:
                                             if loopTypeCheck == smplLoopType[j]:
-                                                print("Match!")
+                                                #print("Match!")
                                                 sampleNum[i] = j
                                 else:
                                     sampleNum[i] = j
