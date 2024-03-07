@@ -23,7 +23,7 @@ def run(tmpDir, PatchImport, VerboseMode):
     template.seek(56)
     template.write('{0:02d}'.format(today.day).encode('utf-8'))
     template.seek(64)
-    romSR = int.from_bytes(audioFile.read(2), "big") * 100
+    romSR = 32000
     
     template.seek(32768)
     templateCoef.seek(1024)
