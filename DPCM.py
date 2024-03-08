@@ -39,7 +39,6 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     loopValue = 0
     loopCoef = 0
     invalue = 0
-    invalue2 = 0
     offsetCheck = 0
     maxexp = 0
 
@@ -58,17 +57,22 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     #encode all frames except the last one
     for frame in range(frameCount - 1):
         maxdelta = 0
+        eval1 = []
+        eval2 = []
         for i in range(16):
             off = frame * 16 + i
             if off > smplEnd:
                 break
             sample = samples[off]
+            if off == sampleLoop:
+                loopFrame = frame
             if (off >= sampleLoop):
-                adj = int(loopAdjust * (off - sampleLoop))
+                adj = round(loopAdjust * (off - sampleLoop))
                 sample -= adj
             delta = (sample - invalue)
-            if delta < 0:
-                delta += 1
+            eval1.append(delta)
+            #if delta < 0:
+                #delta += 1
             maxdelta = max(maxdelta, abs(delta))
             invalue = sample
             
@@ -78,6 +82,12 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
             exp = 0
         elif (exp > 15):
             exp = 15
+
+        for i in range(16):
+            eval2.append((eval1[i] >> exp) % 2)
+        if 1 not in eval2 and exp > 0:
+            exp += 1
+            
         if maxexp < exp:
             maxexp = exp
 
@@ -97,7 +107,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
                 break
             sample = samples[off]
             if (off >= sampleLoop):
-                adj = int(loopAdjust * (off - sampleLoop))
+                adj = round(loopAdjust * (off - sampleLoop))
                 sample -= adj
             delta = (sample - value)
             if delta > (127 << exp):
@@ -183,20 +193,25 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
 
     #find minimum/maximum of delta in the current frame
     maxdelta = 0
-    for i in range(end + 1):
+    eval1 = []
+    eval2 = []
+    for i in range(16):
         off = frame * 16 + i
-        if off > smplEnd + 1:
-            sample = 0
-        else:
-            sample = samples[off]
+        if off > smplEnd:
+            sample = samples[sampleLoop + off - smplEnd]
+        sample = samples[off]
+        if (off >= sampleLoop):
+            adj = round(loopAdjust * (off - sampleLoop))
+            sample -= adj
         delta = (sample - invalue)
-        if delta < 0:
-            delta += 1
+        #if delta < 0:
+            #delta += 1
+        eval1.append(delta)
         maxdelta = max(maxdelta, abs(delta))
         invalue = sample
         
     lastSample = samples[smplEnd]
-    lastSample -= int(loopAdjust * loopLength)
+    lastSample -= round(loopAdjust * loopLength)
     loopDelta = (loopValue - lastSample)
     if loopLength < 4 or loopType != 0:
         loopDelta = 0
@@ -218,6 +233,12 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         exp = 0
     if (exp > 15):
         exp = 15
+
+    for i in range(16):
+        eval2.append((eval1[i] >> exp) % 2)
+    if 1 not in eval2 and exp > 0:
+        exp += 1
+
     if maxexp < exp:
         maxexp = exp
         
