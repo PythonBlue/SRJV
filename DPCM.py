@@ -59,6 +59,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         maxdelta = 0
         eval1 = []
         eval2 = []
+        eval3 = []
         for i in range(16):
             off = frame * 16 + i
             if off > smplEnd:
@@ -67,7 +68,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
             if off == sampleLoop:
                 loopFrame = frame
             if (off >= sampleLoop):
-                adj = round(loopAdjust * (off - sampleLoop))
+                adj = int(loopAdjust * (off - sampleLoop))
                 sample -= adj
             delta = (sample - invalue)
             eval1.append(delta)
@@ -85,8 +86,11 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
 
         for i in range(16):
             eval2.append((eval1[i] >> exp) % 2)
+            eval3.append((eval1[i] >> (exp + 1)) % 2)
         if 1 not in eval2 and exp > 0:
             exp += 1
+            if 1 not in eval3 and exp > 0:
+                exp += 1
             
         if maxexp < exp:
             maxexp = exp
@@ -107,7 +111,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
                 break
             sample = samples[off]
             if (off >= sampleLoop):
-                adj = round(loopAdjust * (off - sampleLoop))
+                adj = int(loopAdjust * (off - sampleLoop))
                 sample -= adj
             delta = (sample - value)
             if delta > (127 << exp):
@@ -195,13 +199,14 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     maxdelta = 0
     eval1 = []
     eval2 = []
-    for i in range(16):
+    eval3 = []
+    for i in range(min(16,end + 2)):
         off = frame * 16 + i
         if off > smplEnd:
             sample = samples[sampleLoop + off - smplEnd]
         sample = samples[off]
         if (off >= sampleLoop):
-            adj = round(loopAdjust * (off - sampleLoop))
+            adj = int(loopAdjust * (off - sampleLoop))
             sample -= adj
         delta = (sample - invalue)
         #if delta < 0:
@@ -211,7 +216,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         invalue = sample
         
     lastSample = samples[smplEnd]
-    lastSample -= round(loopAdjust * loopLength)
+    lastSample -= int(loopAdjust * loopLength)
     loopDelta = (loopValue - lastSample)
     if loopLength < 4 or loopType != 0:
         loopDelta = 0
@@ -234,10 +239,13 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     if (exp > 15):
         exp = 15
 
-    for i in range(16):
+    for i in range(min(16,end + 2)):
         eval2.append((eval1[i] >> exp) % 2)
+        eval3.append((eval1[i] >> (exp + 1)) % 2)
     if 1 not in eval2 and exp > 0:
         exp += 1
+        if 1 not in eval3 and exp > 0:
+            exp += 1
 
     if maxexp < exp:
         maxexp = exp
