@@ -63,8 +63,9 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         for i in range(16):
             off = frame * 16 + i
             if off > smplEnd:
-                break
-            sample = samples[off]
+                sample = 0
+            else:
+                sample = samples[off]
             if off == sampleLoop:
                 loopFrame = frame
             if (off >= sampleLoop):
@@ -84,6 +85,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         elif (exp > 15):
             exp = 15
 
+        print(len(eval1))
         for i in range(16):
             eval2.append((eval1[i] >> exp) % 2)
             eval3.append((eval1[i] >> (exp + 1)) % 2)
@@ -189,6 +191,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
 
 
     if int(smplEnd / 16) == int(sampleLoop / 16):
+        print("Caution: loop in same frame")
         print("")
         return
     
