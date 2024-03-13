@@ -85,7 +85,6 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         elif (exp > 15):
             exp = 15
 
-        print(len(eval1))
         for i in range(16):
             eval2.append((eval1[i] >> exp) % 2)
             eval3.append((eval1[i] >> (exp + 1)) % 2)
