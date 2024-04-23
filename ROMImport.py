@@ -91,7 +91,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                 else:
                     finalSample = (dataSz / bitRate)
                 
-                if template.tell() + finalSample + 33 >= 1048576 * (newBlock + 1):
+                if template.tell() + finalSample + (finalSample % 32) >= 1048576 * (newBlock + 1):
                     audioFile.close()
                     continue
                 
@@ -128,8 +128,8 @@ def run(tmpDir, PatchImport, VerboseMode):
                         smplStart.append(template.tell())
                         smplDelay.append(0)
                         smplStartN.append(0)
-                        smplLoop.append(buff - 2)
-                        smplEnd.append(buff - 1)
+                        smplLoop.append(buff - 1)
+                        smplEnd.append(buff)
                         loopTuneResult = 1024
                     fineTune.append(fineTuneResult)
                     loopTune.append(loopTuneResult)
@@ -192,12 +192,12 @@ def run(tmpDir, PatchImport, VerboseMode):
                                         smplStartPrep = (int(smplStartFind[0]))
                                         
                                     smplLoopFind = re.findall('loop_start=(\d+)', RegionList[i + 1])
-                                    smplLoopPrep = (buff - 2)
+                                    smplLoopPrep = (buff - 1)
                                     if len(smplLoopFind) > 0 and ("loop_mode=loop_sustain" in RegionList[i + 1] or "loop_mode=loop_continuous" in RegionList[i + 1]):
                                         smplLoopPrep = (int(smplLoopFind[0]))
                                         
                                     smplEndFind = re.findall('loop_end=(\d+)', RegionList[i + 1])
-                                    smplEndPrep = (buff - 1)
+                                    smplEndPrep = (buff)
                                     if len(smplEndFind) > 0 and ("loop_mode=loop_sustain" in RegionList[i + 1] or "loop_mode=loop_continuous" in RegionList[i + 1]):
                                         smplEndPrep = (int(smplEndFind[0]))
                                         

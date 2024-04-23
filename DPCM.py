@@ -376,7 +376,7 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
     for i in range(coefLen):
         coefs.append(b'\x00')
     deltas = []
-    for i in range(math.ceil((smplEnd + 1) / 32) * 32):
+    for i in range(coefLen * 32):
         deltas.append(b'\x00')
     print("sample loop: " + str(smplLoop) + " to " + str(smplEnd))
 
