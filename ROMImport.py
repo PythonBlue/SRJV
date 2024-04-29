@@ -423,8 +423,8 @@ def run(tmpDir, PatchImport, VerboseMode):
     template.seek(128 + 1048576)
     template.write(patch80Offset.to_bytes(4,"big"))
     template.write(patch80Offset.to_bytes(4,"big"))
+    template.seek(140 + 1048576)
     if PatchImport == True and os.path.exists(sourceDir + foldersplit + "Patches" + foldersplit + "990.syx"):
-        template.seek(140 + 1048576)
         Import990.run(sourceDir + foldersplit + "Patches" + foldersplit + "990")
         patch990Table = open(sourceDir + foldersplit + "Patches" + foldersplit + "990.patches", "rb")
         patch990Table.seek(0,2)
@@ -439,10 +439,6 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.write(patch990Table.read())
         patch990Table.close()
     else:
-        template.seek(96 + 1048576)
-        template.write(patch990Offset.to_bytes(4,"big"))
-        template.write(patch990Offset.to_bytes(4,"big"))
-        template.seek(140 + 1048576)
         template.write(patch990Offset.to_bytes(4,"big"))
         template.write(patch990Offset.to_bytes(4,"big"))
         template.seek(102 + 1048576)
@@ -468,10 +464,6 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.write(patch2080Table.read())
         patch2080Table.close()
     else:
-        template.seek(96 + 1048576 * 2)
-        template.write(patch2080Offset.to_bytes(4,"big"))
-        template.write(patch2080Offset.to_bytes(4,"big"))
-        template.seek(140 + 1048576 * 2)
         template.write(patch2080Offset.to_bytes(4,"big"))
         template.write(patch2080Offset.to_bytes(4,"big"))
         template.seek(102 + 1048576 * 2)
