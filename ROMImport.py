@@ -66,6 +66,21 @@ def run(tmpDir, PatchImport, VerboseMode):
             if filename.endswith(".wav"):
                 if ("=" + filename) in dupPreCheck:
                     continue
+
+                refd = False
+                
+                for multiname in sorted(os.listdir(os.getcwd())):
+                    if multiCount == 254 : continue
+                    if multiname.endswith(".sfz"):
+                        sfzFile = open(os.getcwd() + foldersplit + multiname, "r")
+                        sfzText = "   \n" + sfzFile.read()
+                        sfzFile.close()
+                        if filename.split(".wav")[0] in sfzText:
+                            refd = True
+
+                if refd == False:
+                    continue
+                
                 fineTuneResult = 1024
                 loopTuneResult = 1024
     
@@ -128,8 +143,8 @@ def run(tmpDir, PatchImport, VerboseMode):
                         smplStart.append(template.tell())
                         smplDelay.append(0)
                         smplStartN.append(0)
-                        smplLoop.append(buff - 1)
-                        smplEnd.append(buff)
+                        smplLoop.append(buff - 2)
+                        smplEnd.append(buff - 1)
                         loopTuneResult = 1024
                     fineTune.append(fineTuneResult)
                     loopTune.append(loopTuneResult)
@@ -176,40 +191,40 @@ def run(tmpDir, PatchImport, VerboseMode):
                                             smplLoopTypePrep = (6)
                                         else:
                                             smplLoopTypePrep = (2)
-                                    rootKeyFind = re.findall('pitch_keycenter=(\d+)', RegionList[i + 1])
+                                    rootKeyFind = re.findall('pitch_keycenter=(\\d+)', RegionList[i + 1])
                                     rootKeyPrep = 60
                                     if len(rootKeyFind) > 0:
                                         rootKeyPrep = (int(rootKeyFind[0]))
 
-                                    smplDelayFind = re.findall('delay_samples=(\d+)', RegionList[i + 1])
+                                    smplDelayFind = re.findall('delay_samples=(\\d+)', RegionList[i + 1])
                                     smplDelayPrep = 0
                                     if len(smplDelayFind) > 0:
                                         smplDelayPrep = (int(smplDelayFind[0]))
 
-                                    smplStartFind = re.findall('offset=(\d+)', RegionList[i + 1])
+                                    smplStartFind = re.findall('offset=(\\d+)', RegionList[i + 1])
                                     smplStartPrep = 0
                                     if len(smplStartFind) > 0:
                                         smplStartPrep = (int(smplStartFind[0]))
                                         
-                                    smplLoopFind = re.findall('loop_start=(\d+)', RegionList[i + 1])
-                                    smplLoopPrep = (buff - 1)
+                                    smplLoopFind = re.findall('loop_start=(\\d+)', RegionList[i + 1])
+                                    smplLoopPrep = (buff - 2)
                                     if len(smplLoopFind) > 0 and ("loop_mode=loop_sustain" in RegionList[i + 1] or "loop_mode=loop_continuous" in RegionList[i + 1]):
                                         smplLoopPrep = (int(smplLoopFind[0]))
                                         
-                                    smplEndFind = re.findall('loop_end=(\d+)', RegionList[i + 1])
-                                    smplEndPrep = (buff)
+                                    smplEndFind = re.findall('loop_end=(\\d+)', RegionList[i + 1])
+                                    smplEndPrep = (buff - 1)
                                     if len(smplEndFind) > 0 and ("loop_mode=loop_sustain" in RegionList[i + 1] or "loop_mode=loop_continuous" in RegionList[i + 1]):
                                         smplEndPrep = (int(smplEndFind[0]))
                                         
-                                    smplVolFind = re.findall('amplitude=(\d+.?\d*)', RegionList[i + 1])
+                                    smplVolFind = re.findall('amplitude=(\\d+.?\\d*)', RegionList[i + 1])
                                     smplVolPrep = 127
                                     if len(smplVolFind) > 0:
                                         smplVolPrep = (round(float(max(0,min(100,float(smplVolFind[0])))) * 1.27))
                         
-                                    smplTuneFind = re.findall('\ntune=(-?\d+.?\d*)', RegionList[i + 1])
+                                    smplTuneFind = re.findall('\ntune=(-?\\d+.?\\d*)', RegionList[i + 1])
                                     if len(smplTuneFind) > 0:
                                         fineTuneResult = 1024 + round(float(smplTuneFind[0]) * 1024 / 100)
-                                    loopTuneFind = re.findall('looptune=(-?\d+.?\d*)', RegionList[i + 1])
+                                    loopTuneFind = re.findall('looptune=(-?\\d+.?\\d*)', RegionList[i + 1])
                                     if len(loopTuneFind) > 0:
                                         loopTuneResult = 1024 + round(float(loopTuneFind[0]) * 1024 / 100)
 
@@ -344,18 +359,18 @@ def run(tmpDir, PatchImport, VerboseMode):
             RegionList = sfzText.split("<region>")
             if len(RegionList) > 1:
                 for i in range(min(16, len(RegionList) - 1)):
-                    sampleIDList = re.findall("sample=.+\.wav",RegionList[i + 1])
+                    sampleIDList = re.findall("sample=.+\\.wav",RegionList[i + 1])
                     if len(sampleIDList) > 0:
                         sampleIDList[0] = "=" + (sampleIDList[0].split("="))[1]
                         for j in range(sampleCount + 1):
                             if sampleIDList[0] == sampleIDs[j]:
                                 if dataChunkList[j] == False:
                                     volumeCheck = 127
-                                    if len(re.findall("amplitude=(\d+.?\d*)",RegionList[i + 1])) > 0:
-                                        volumeCheck = round(float(max(0,min(100,float(re.findall("amplitude=(\d+.?\d*)",RegionList[i + 1])[0])))) * 1.27)
+                                    if len(re.findall("amplitude=(\\d+.?\\d*)",RegionList[i + 1])) > 0:
+                                        volumeCheck = round(float(max(0,min(100,float(re.findall("amplitude=(\\d+.?\\d*)",RegionList[i + 1])[0])))) * 1.27)
                                     startCheck = 0
-                                    if len(re.findall("offset=(\d+)",RegionList[i + 1])) > 0:
-                                        startCheck = int(re.findall("offset=(\d+)",RegionList[i + 1])[0])
+                                    if len(re.findall("offset=(\\d+)",RegionList[i + 1])) > 0:
+                                        startCheck = int(re.findall("offset=(\\d+)",RegionList[i + 1])[0])
                                     loopTypeCheck = 0
                                     if "loop_type=alternate" in RegionList[i + 1]:
                                         loopTypeCheck = 1

@@ -399,7 +399,7 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
     wav.seek(dataChk + 8)
     wavSamplesPrep = []
     wavSamples = []
-    for i in range(smplEnd):
+    for i in range(sampleCount):
         End1 = int.from_bytes(wav.read(1), "big")
         End2 = int.from_bytes(wav.read(1), "big")
         End3 = int.from_bytes(wav.read(1), "big")
@@ -412,7 +412,7 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
         if Endian >= 1 << (bitRate - 1):
             Endian -= 1 << bitRate
         wavSamplesPrep.append(Endian)
-        if loopType == 1 and i >= smplEnd - 1:
+        if loopType == 1 and i >= smplEnd:
             continue
     for i in range(smplEnd - (smplEnd % 16)):
         if loopType == 1:
