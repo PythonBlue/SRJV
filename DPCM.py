@@ -1,35 +1,35 @@
 import sys, math, platform
 
 def logo(x):
-    if x < 128:
+    if x < 128 and x >= -128:
         return 0
-    elif x < 256:
+    elif (x >> 1) < 128 and (x >> 1) >= -128:
         return 1
-    elif x < 512:
+    elif (x >> 2) < 128 and (x >> 2) >= -128:
         return 2
-    elif x < 1024:
+    elif (x >> 3) < 128 and (x >> 3) >= -128:
         return 3
-    elif x < 2048:
+    elif (x >> 4) < 128 and (x >> 4) >= -128:
         return 4
-    elif x < 4096:
+    elif (x >> 5) < 128 and (x >> 5) >= -128:
         return 5
-    elif x < 8192:
+    elif (x >> 6) < 128 and (x >> 6) >= -128:
         return 6
-    elif x < 16384:
+    elif (x >> 7) < 128 and (x >> 7) >= -128:
         return 7
-    elif x < 32768:
+    elif (x >> 8) < 128 and (x >> 8) >= -128:
         return 8
-    elif x < 65536:
+    elif (x >> 9) < 128 and (x >> 9) >= -128:
         return 9
-    elif x < 131072:
+    elif (x >> 10) < 128 and (x >> 10) >= -128:
         return 10
-    elif x < 262144:
+    elif (x >> 11) < 128 and (x >> 11) >= -128:
         return 11
-    elif x < 524288:
+    elif (x >> 12) < 128 and (x >> 12) >= -128:
         return 12
-    elif x < 1048576:
+    elif (x >> 13) < 128 and (x >> 13) >= -128:
         return 13
-    elif x < 2097152:
+    elif (x >> 14) < 128 and (x >> 14) >= -128:
         return 14
     else:
         return 15
@@ -41,6 +41,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     invalue = 0
     offsetCheck = 0
     maxexp = 0
+    evalCheck = 0
 
     loopDC = 0
     if loopType == 0:
@@ -55,6 +56,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         frameCount += 1
     
     #encode all frames except the last one
+    expChecked = False
     for frame in range(frameCount - 1):
         maxdelta = 0
         eval1 = []
@@ -62,6 +64,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         eval3 = []
         eval4 = []
         eval5 = []
+        eval6 = []
         for i in range(16):
             off = frame * 16 + i
             if off > smplEnd:
@@ -70,6 +73,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
                 sample = samples[off]
             if off == sampleLoop:
                 loopFrame = frame
+                expChecked = True
             if (off >= sampleLoop):
                 adj = int(loopAdjust * (off - sampleLoop))
                 sample -= adj
@@ -77,7 +81,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
             eval1.append(delta)
             #if delta < 0:
                 #delta += 1
-            maxdelta = max(maxdelta, abs(delta))
+            if abs(delta) > abs(maxdelta):
+                maxdelta = delta
             invalue = sample
             
         #decide on coefficient
@@ -92,17 +97,25 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
             eval3.append((eval1[i] >> (exp + 1)) % 2)
             eval4.append((eval1[i] >> (exp + 2)) % 2)
             eval5.append((eval1[i] >> (exp + 3)) % 2)
-        if 1 not in eval2 and exp > 0:
+            eval6.append((eval1[i] >> (exp + 4)) % 2)
+        if 1 not in eval2 and maxdelta != 0:
             exp += 1
-            if 1 not in eval3 and exp > 1:
+            if 1 not in eval3:
                 exp += 1
-                if 1 not in eval4 and exp > 2:
+                if 1 not in eval4:
                     exp += 1
-                    if 1 not in eval5 and exp > 3:
+                    if 1 not in eval5:
                         exp += 1
+                        if 1 not in eval6:
+                            exp += 1
+            
             
         if maxexp < exp:
             maxexp = exp
+
+        if expChecked == True:
+            expChecked = False
+            evalCheck = exp
 
         #store exponent
         if ((frame & 1) == 0):
@@ -123,6 +136,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
                 adj = int(loopAdjust * (off - sampleLoop))
                 sample -= adj
             delta = (sample - value)
+            
             if delta > (127 << exp):
                 delta = (127 << exp)
             elif delta < (-128 << exp):
@@ -212,6 +226,7 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     eval3 = []
     eval4 = []
     eval5 = []
+    eval6 = []
     for i in range(min(16,end + 2)):
         off = frame * 16 + i
         if off > smplEnd:
@@ -224,7 +239,8 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         #if delta < 0:
             #delta += 1
         eval1.append(delta)
-        maxdelta = max(maxdelta, abs(delta))
+        if abs(delta) > abs(maxdelta):
+            maxdelta = delta
         invalue = sample
         
     lastSample = samples[smplEnd]
@@ -237,10 +253,10 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     
     if VerboseMode: print("loop delta: " + str(loopDelta) + " (" + str((samples[sampleLoop - 1] - samples[smplEnd])) + ")")
     if (end != 0):
-        if int(abs(loopDelta / (end + 1))) > maxdelta:
-            maxdelta = int(abs(loopDelta / (end + 1)))
-    elif int(abs(loopDelta) > maxdelta):
-        maxdelta = abs(loopDelta)
+        if int(abs(loopDelta / (end + 1))) > abs(maxdelta):
+            maxdelta = int(loopDelta / (end + 1))
+    elif int(abs(loopDelta)) > abs(maxdelta):
+        maxdelta = int(loopDelta)
     if VerboseMode: print("loop adjust: " + str(adjust) + " over " + str(end + 1) + " samples")
 
 
@@ -256,14 +272,19 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         eval3.append((eval1[i] >> (exp + 1)) % 2)
         eval4.append((eval1[i] >> (exp + 2)) % 2)
         eval5.append((eval1[i] >> (exp + 3)) % 2)
-    if 1 not in eval2 and exp > 0:
+        eval6.append((eval1[i] >> (exp + 4)) % 2)
+    print("Enter " + str(maxdelta))
+    preEval = (samples[smplEnd + 1] - samples[smplEnd])
+    if 1 not in eval2 and (exp < evalCheck):
         exp += 1
-        if 1 not in eval3 and exp > 1:
+        if 1 not in eval3:
             exp += 1
-            if 1 not in eval4 and exp > 2:
+            if 1 not in eval4:
                 exp += 1
-                if 1 not in eval5 and exp > 3:
+                if 1 not in eval5:
                     exp += 1
+                    if 1 not in eval6:
+                        exp += 1
 
     if maxexp < exp:
         maxexp = exp
@@ -386,7 +407,7 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
     #smplLoop += 1
     #smplEnd += 1
     
-    coefLen = math.ceil((smplEnd + 1) / 32)
+    coefLen = math.ceil((smplEnd + 2) / 32)
 	
     coefs = []
     for i in range(coefLen):
