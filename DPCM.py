@@ -1,35 +1,35 @@
 import sys, math, platform
 
 def logo(x):
-    if x < 128 and x >= -128:
+    if abs(x) <= 128:
         return 0
-    elif (x >> 1) < 128 and (x >> 1) >= -128:
+    elif abs(x >> 1) <= 128:
         return 1
-    elif (x >> 2) < 128 and (x >> 2) >= -128:
+    elif abs(x >> 2) <= 128:
         return 2
-    elif (x >> 3) < 128 and (x >> 3) >= -128:
+    elif abs(x >> 3) <= 128:
         return 3
-    elif (x >> 4) < 128 and (x >> 4) >= -128:
+    elif abs(x >> 4) <= 128:
         return 4
-    elif (x >> 5) < 128 and (x >> 5) >= -128:
+    elif abs(x >> 5) <= 128:
         return 5
-    elif (x >> 6) < 128 and (x >> 6) >= -128:
+    elif abs(x >> 6) <= 128:
         return 6
-    elif (x >> 7) < 128 and (x >> 7) >= -128:
+    elif abs(x >> 7) <= 128:
         return 7
-    elif (x >> 8) < 128 and (x >> 8) >= -128:
+    elif abs(x >> 8) <= 128:
         return 8
-    elif (x >> 9) < 128 and (x >> 9) >= -128:
+    elif abs(x >> 9) <= 128:
         return 9
-    elif (x >> 10) < 128 and (x >> 10) >= -128:
+    elif abs(x >> 10) <= 128:
         return 10
-    elif (x >> 11) < 128 and (x >> 11) >= -128:
+    elif abs(x >> 11) <= 128:
         return 11
-    elif (x >> 12) < 128 and (x >> 12) >= -128:
+    elif abs(x >> 12) <= 128:
         return 12
-    elif (x >> 13) < 128 and (x >> 13) >= -128:
+    elif abs(x >> 13) <= 128:
         return 13
-    elif (x >> 14) < 128 and (x >> 14) >= -128:
+    elif abs(x >> 14) <= 128:
         return 14
     else:
         return 15
@@ -273,17 +273,15 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
         eval4.append((eval1[i] >> (exp + 2)) % 2)
         eval5.append((eval1[i] >> (exp + 3)) % 2)
         eval6.append((eval1[i] >> (exp + 4)) % 2)
-    print("Enter " + str(maxdelta))
-    preEval = (samples[smplEnd + 1] - samples[smplEnd])
     if 1 not in eval2 and (exp < evalCheck):
         exp += 1
-        if 1 not in eval3:
+        if 1 not in eval3 and (exp < evalCheck):
             exp += 1
-            if 1 not in eval4:
+            if 1 not in eval4 and (exp < evalCheck):
                 exp += 1
-                if 1 not in eval5:
+                if 1 not in eval5 and (exp < evalCheck):
                     exp += 1
-                    if 1 not in eval6:
+                    if 1 not in eval6 and (exp < evalCheck):
                         exp += 1
 
     if maxexp < exp:
