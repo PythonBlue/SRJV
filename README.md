@@ -10,7 +10,7 @@ With enough further hacking, it is possible to load the imported multisamples as
 
 In addition, experimental patch support is also included. As it is now, the format of the ROM suggests it usually has two different patch tables per card: what's seemingly required is the patch data that's directly compatible for, namely, the JV-80, the other known compatible patches being for the JV-2080 and, famously for SR-JV80-04, the JD-990. Currently the way patch importing works assumes any of these three models, though the creator does not guarantee the required SysEx for the JV-80 will be identical in the ROM due to inability to verify with such a synth.
 
-UPDATE: 1/7/2023 Out of pressure for it, the creator also caved and included a wave extractor script that also puts in the effort of converting the tables into SFZ files. Use on official ROM's at your own risk: this is included solely in order to verify the data.
+UPDATE: 1/7/2023 Out of pressure for it, the creator also caved and included a wave extractor script that also puts in the effort of converting the tables into SFZ files. Use unofficial ROM's at your own risk: this is included solely in order to verify the data.
 
 ## Pre-requisites
 
