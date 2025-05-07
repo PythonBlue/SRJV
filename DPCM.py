@@ -1,4 +1,4 @@
-import sys, math, platform
+import sys, math, platform, os
 
 def logo(x):
     if abs(x) <= 128:
@@ -384,7 +384,61 @@ def DPCMEncode(coefs, deltas, samples, offset, sampleStart, loopType, sampleLoop
     print("")
 
 def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
+    pwav1 = open(fname, "rb")
+    pwav2 = open(fname + ".wav", "wb")
+    pwavr = pwav1.read()
+    bitRate = pwavr[34]
+    pwav1.seek(0)
+    pwav2.write(pwav1.read(pwavr.find(b'data') + 4))
+    pwavs = int.from_bytes(pwav1.read(4), "little")
+    pwav2.write(pwavs.to_bytes(4, "little"))
+    inbuf = []
+    midbuf = []
+    outbuf = []
+    clip = False
+    clipbuf = []
+    for i in range(int(pwavs / bitRate * 8)):
+        if bitRate != 24 and bitRate != 32:
+            print("Error: unsupported bitrate of input!")
+            return
+        if bitRate == 24:
+            inread = int.from_bytes(pwav1.read(3), "little")
+            if inread >= 1 << 23:
+                inread -= (1 << 24)
+            inbuf.append(inread)
+        else:
+            inread = int.from_bytes(pwav1.read(4), "little")
+            if inread >= 1 << 31:
+                inread -= (1 << 32)
+            inbuf.append(inread)
+    for i in range(len(inbuf)):
+        if i == 0:
+            midbuf.append(round(inbuf[i]))
+            clipbuf.append(round(inbuf[i]))
+        else:
+            midbuf.append(round((inbuf[i] * 3 - midbuf[len(midbuf) - 1]) / 3))
+            clipbuf.append(round((inbuf[i] * 3 + inbuf[i - 1]) / 3))
+    for i in range(len(midbuf) - 1, -1, -1):
+        if i == len(midbuf) - 1:
+            outbuf.append(round(midbuf[i]))
+        else:
+            outbuf.append(round((midbuf[i] * 3 - outbuf[len(outbuf) - 1]) / 3))
+            if abs(clipbuf[i] * 3 + clipbuf[i + 1]) / 3 >= (1 << (bitRate - 1)):
+                clip = True
+    for i in range(len(outbuf)):
+        if bitRate == 24:
+            pwav2.write((round(outbuf[len(inbuf) - 1 - i]) & ((1 << 24) - 1)).to_bytes(3,"little"))
+        else:
+            pwav2.write((round(outbuf[len(inbuf) - 1 - i]) & ((1 << 32) - 1)).to_bytes(4,"little"))
+    pwav2.write(pwav1.read())
+    pwav2.close()
+    pwav1.close()
+    
     wav = open(fname, "rb")
+    if clip == True:
+        print("Warning: " + fname + " clipping! Compressing with alternate frequencies...")
+        wav.close()
+        wav = open(fname + ".wav", "rb")
     #print(fname)
     audioFile = wav.read()
     wav.seek(0)
@@ -427,7 +481,7 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
         if bitRate > 16:
             if bitRate > 24:
                 End4 = int.from_bytes(wav.read(1), "big")
-                Endian = (End4 << 16) + (End3 << 16) + (End2 << 8) + End1
+                Endian = (End4 << 24) + (End3 << 16) + (End2 << 8) + End1
         if Endian >= 1 << (bitRate - 1):
             Endian -= 1 << bitRate
         wavSamplesPrep.append(Endian)
@@ -454,12 +508,13 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
     sampleCount = len(wavSamplesPrep)
     prevDelta = 0
     for i in range(sampleCount):
-        wavSamples.append((wavSamplesPrep[i] << 1) >> (bitRate - 16))
-
+        wavSamples.append(wavSamplesPrep[i] >> (bitRate - 17))
+        
     DPCMEncode(coefs, deltas, wavSamples, 0, sampleStart, loopType, smplLoop, smplEnd, VerboseMode)
     foldersplit = "/"
     if platform.system() == "Windows":
         foldersplit = "\\"
+    os.remove(fname + ".wav")
         
     try:
         output1 = open(fname + "_exp.bin", "wb")
