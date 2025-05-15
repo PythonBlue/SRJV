@@ -309,7 +309,7 @@ def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll
     end_list = []
     for idx_multisample, multisample in enumerate(multisamples):
         sample_ids = multisample["sample_id"]
-        multisample_name_compact = multisample["multisample_name"]#.replace(" ", "_").lower()
+        multisample_name_compact = re.sub(r'[<>:"\|?*]', '_', multisample["multisample_name"])#.replace(" ", "_").lower()
         #multisample_name_compact = re.sub(name_whitelisted_characters, '', multisample_name_compact)
 
         multisample_id = str(multisample['multisample_id'] + 1).zfill(3)
