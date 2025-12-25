@@ -72,102 +72,183 @@ def number_to_note(note_number):
     return note + str(octave)
 
 
-def read_header(block_num, file):
+def read_header(block_num, file, width):
     offset = block_num * BLOCK_SIZE
     header = {}
-
     file.seek(offset + 0x20)
     card_name_bytes = file.read(16)
     header["card_name"] = card_name_bytes.decode(
         'ascii').strip().replace("\x00", "")  # Strip to remove any potential padding or trailing spaces
+    if width == 8:
+        file.seek(offset + 0x53)
+        header["supported_model_id"] = struct.unpack(">B", file.read(1))[0]
+        header["supported_model_id_str"] = modelid_to_str(header["supported_model_id"])
 
-    file.seek(offset + 0x53)
-    header["supported_model_id"] = struct.unpack(">B", file.read(1))[0]
-    header["supported_model_id_str"] = modelid_to_str(header["supported_model_id"])
-
-    file.seek(offset + 0x40)
-    header["sample_rate"] = struct.unpack(">H", file.read(2))[0] * 100
+        file.seek(offset + 0x40)
+        header["sample_rate"] = struct.unpack(">H", file.read(2))[0] * 100
     
-    file.seek(offset + 0x60)
-    header["number_of_samples"] = struct.unpack(">H", file.read(2))[0]
-    header["number_of_multisamples"] = struct.unpack(">H", file.read(2))[0]
-    header["number_of_drumkits"] = struct.unpack(">H", file.read(2))[0]
-    header["number_of_patches"] = struct.unpack(">H", file.read(2))[0]
+        file.seek(offset + 0x60)
+        header["number_of_samples"] = struct.unpack(">H", file.read(2))[0]
+        header["number_of_multisamples"] = struct.unpack(">H", file.read(2))[0]
+        header["number_of_drumkits"] = struct.unpack(">H", file.read(2))[0]
+        header["number_of_patches"] = struct.unpack(">H", file.read(2))[0]
 
-    file.seek(offset + 0x80)
-    header["sample_table_position"] = struct.unpack(">I", file.read(4))[0]
-    header["multisample_table_position"] = struct.unpack(">I", file.read(4))[0]
-    header["drumkit_table_position"] = struct.unpack(">I", file.read(4))[0]
-    header["patch_table_position"] = struct.unpack(">I", file.read(4))[0]
-
+        file.seek(offset + 0x80)
+        header["sample_table_position"] = struct.unpack(">I", file.read(4))[0]
+        header["multisample_table_position"] = struct.unpack(">I", file.read(4))[0]
+        header["drumkit_table_position"] = struct.unpack(">I", file.read(4))[0]
+        header["patch_table_position"] = struct.unpack(">I", file.read(4))[0]
+    else:
+        table_type = []
+        table_address = []
+        table_length = []
+        file.seek(offset + 0x42)
+        header["number_of_tables"] = struct.unpack(">H", file.read(2))[0]
+        file.seek(offset + 0x80)
+        for i in range(header["number_of_tables"]):
+            table_type.append(struct.unpack(">H", file.read(2))[0])
+            dummy = struct.unpack(">H", file.read(2))[0]
+            table_address.append(struct.unpack(">I", file.read(4))[0])
+            table_length.append(struct.unpack(">I", file.read(4))[0])
+            dummy = struct.unpack(">I", file.read(4))[0]
+        for i in range(header["number_of_tables"]):
+            file.seek(table_address[i])
+            match table_type[i]:
+                case 1:
+                    header["sample_table_position"] = table_address[i]
+                    header["number_of_samples"] = struct.unpack(">H", file.read(2))[0]
+                case 2:
+                    header["multisample_table_position"] = table_address[i]
+                    header["number_of_multisamples"] = struct.unpack(">H", file.read(2))[0]
+                case 4:
+                    header["patch_table_position"] = table_address[i]
+                    header["number_of_patches"] = struct.unpack(">H", file.read(2))[0]
+                case 5:
+                    header["drumkit_table_position"] = table_address[i]
+                    header["number_of_drumkits"] = struct.unpack(">H", file.read(2))[0]
     return header
 
 
-def read_multisamples_table(file, multisamples_table_pos, header):
+def read_multisamples_table(file, multisamples_table_pos, header, width):
     multisamples = []
 
-    file.seek(multisamples_table_pos)
+    if width == 8:
+        file.seek(multisamples_table_pos)
+        for i in range(header["number_of_multisamples"]):
+            multisample = {}
+            name_bytes = file.read(12)
+            multisample["multisample_id"] = i
+            multisample["multisample_name"] = name_bytes.decode(
+                'ascii').strip()  # Strip to remove any potential padding or trailing spaces
+            multisample["high_key"] = []
+            for _ in range(16):
+                high_key = struct.unpack(">B", file.read(1))[0]
+                multisample["high_key"].append(high_key)
+            # sample id: 65535 is probably unused
+            multisample["sample_id"] = []
+            for _ in range(16):
+                sample_id = struct.unpack(">H", file.read(2))[0]
+                multisample["sample_id"].append(sample_id)
 
-    for i in range(header["number_of_multisamples"]):
-        multisample = {}
-        name_bytes = file.read(12)
-        multisample["multisample_id"] = i
-        multisample["multisample_name"] = name_bytes.decode(
-            'ascii').strip()  # Strip to remove any potential padding or trailing spaces
-        multisample["high_key"] = []
-        for _ in range(16):
-            high_key = struct.unpack(">B", file.read(1))[0]
-#            print(str(high_key) + "/" + number_to_note(high_key))
-            multisample["high_key"].append(high_key)
-
-#        print("---------")
-
-        # sample id: 65535 is probably unused
-        multisample["sample_id"] = []
-        for _ in range(16):
-            sample_id = struct.unpack(">H", file.read(2))[0]
-#            print(sample_id)
-            multisample["sample_id"].append(sample_id)
-
-#        print("=========")
-
-        multisamples.append(multisample)
-
+            multisamples.append(multisample)
+    else:
+        file.seek(multisamples_table_pos + 0x0C)
+        multisample_header_offset = []
+        multisample_header_length = []
+        number_of_ranges = []
+        for i in range(header["number_of_multisamples"]):
+            multisample_header_offset.append(struct.unpack(">I", file.read(4))[0])
+            multisample_header_length.append(struct.unpack(">I", file.read(4))[0])
+            number_of_ranges.append((multisample_header_length[i] - 16) // 4)
+        for i in range(header["number_of_multisamples"]):
+            file.seek(multisamples_table_pos + multisample_header_offset[i])
+            multisample = {}
+            name_bytes = file.read(12)
+            multisample["multisample_id"] = i
+            multisample["multisample_name"] = name_bytes.decode(
+                'ascii').strip()  # Strip to remove any potential padding or trailing spaces
+            multisample["high_key"] = []
+            multisample["sample_id"] = []
+            dummy = struct.unpack(">I", file.read(4))[0]
+            for _ in range(number_of_ranges[i]):
+                high_key = struct.unpack(">B", file.read(1))[0]
+                multisample["high_key"].append(high_key)
+                dummy = struct.unpack(">B", file.read(1))[0]
+            # sample id: 65535 is probably unused
+                sample_id = struct.unpack(">H", file.read(2))[0]
+                multisample["sample_id"].append(sample_id)
+            multisamples.append(multisample)
+            
     return multisamples
 
-
-def read_sample_table(file, sample_table_pos, header):
+def read_sample_table(file, sample_table_pos, header, width):
     samples = []
-    file.seek(sample_table_pos)
-    for i in range(header["number_of_samples"]):
-        sample = {}
-        sample["id"] = i
-        sample["volume"] = struct.unpack(">B", file.read(1))[0]
-        sample["sample_start"] = struct.unpack(">I", b'\x00' + file.read(3))[0]
-        sample["loop_start"] = struct.unpack(">I", b'\x00' + file.read(3))[0]
-        sample["sample_end"] = struct.unpack(">I", b'\x00' + file.read(3))[0]
-        sample["unknown"] = struct.unpack(">H", file.read(2))[0]
-        sample["loop_type"] = struct.unpack(">B", file.read(1))[0]
-        sample["loop_type_str"] = loop_type_to_str(sample["loop_type"])
-        sample["root_key"] = struct.unpack(">B", file.read(1))[0]
-        sample["root_key_str"] = number_to_note(sample["root_key"])
-        sample["fine_tune"] = struct.unpack(">H", file.read(2))[0]
-        sample["loop_fine_tune"] = struct.unpack(">H", file.read(2))[0]
-        sample["sample_offset"] = 0
-        sample["sample_delay"] = (sample["sample_start"] % 16)
-        for j in range(len(samples)):
-            if sample["sample_end"] == samples[j]["sample_end"]:
-                if sample["sample_start"] < samples[j]["sample_start"]:
-                    sample["sample_offset"] = 0
-                    samples[j]["sample_offset"] = samples[j]["sample_start"] - sample["sample_start"]
-                    samples[j]["sample_start"] -= samples[j]["sample_offset"]
-                    sample["sample_delay"] = sample["sample_start"] % 16
-                elif sample["sample_start"] > samples[j]["sample_start"]:
-                    sample["sample_offset"] = sample["sample_start"] - samples[j]["sample_start"]
-                    sample["sample_start"] -= sample["sample_offset"]
-                    sample["sample_delay"] = samples[j]["sample_start"] % 16
-        sample["sample_trim"] = 0
-        samples.append(sample)
+    if width == 8:
+        file.seek(sample_table_pos)
+        for i in range(header["number_of_samples"]):
+            sample = {}
+            sample["id"] = i
+            sample["volume"] = struct.unpack(">B", file.read(1))[0]
+            sample["sample_start"] = struct.unpack(">I", b'\x00' + file.read(3))[0]
+            sample["loop_start"] = struct.unpack(">I", b'\x00' + file.read(3))[0]
+            sample["sample_end"] = struct.unpack(">I", b'\x00' + file.read(3))[0]
+            sample["unknown"] = struct.unpack(">H", file.read(2))[0]
+            sample["loop_type"] = struct.unpack(">B", file.read(1))[0]
+            sample["loop_type_str"] = loop_type_to_str(sample["loop_type"])
+            sample["root_key"] = struct.unpack(">B", file.read(1))[0]
+            sample["root_key_str"] = number_to_note(sample["root_key"])
+            sample["fine_tune"] = struct.unpack(">H", file.read(2))[0]
+            sample["loop_fine_tune"] = struct.unpack(">H", file.read(2))[0]
+            sample["sample_offset"] = 0
+            sample["sample_delay"] = (sample["sample_start"] % 16)
+            for j in range(len(samples)):
+                if sample["sample_end"] == samples[j]["sample_end"]:
+                    if sample["sample_start"] < samples[j]["sample_start"]:
+                        sample["sample_offset"] = 0
+                        samples[j]["sample_offset"] = samples[j]["sample_start"] - sample["sample_start"]
+                        samples[j]["sample_start"] -= samples[j]["sample_offset"]
+                        sample["sample_delay"] = sample["sample_start"] % 16
+                    elif sample["sample_start"] > samples[j]["sample_start"]:
+                        sample["sample_offset"] = sample["sample_start"] - samples[j]["sample_start"]
+                        sample["sample_start"] -= sample["sample_offset"]
+                        sample["sample_delay"] = samples[j]["sample_start"] % 16
+            sample["sample_trim"] = 0
+            samples.append(sample)
+
+    else:
+        file.seek(sample_table_pos + 0x0C)
+        for i in range(header["number_of_samples"]):
+            sample = {}
+            sample["id"] = i
+            sample["volume"] = struct.unpack(">B", file.read(1))[0]
+            sample["loop_type"] = struct.unpack(">B", file.read(1))[0]
+            sample["loop_type_str"] = loop_type_to_str(sample["loop_type"])
+            sample["root_key"] = struct.unpack(">B", file.read(1))[0]
+            sample["root_key_str"] = number_to_note(sample["root_key"])
+            sample["unknown1"] = struct.unpack(">B", file.read(1))[0]
+            sample["unknown2"] = struct.unpack(">H", file.read(2))[0]
+            sample["fine_tune"] = struct.unpack(">H", file.read(2))[0]
+            sample["loop_fine_tune"] = struct.unpack(">H", file.read(2))[0]
+            sample["sample_rate"] = struct.unpack(">H", file.read(2))[0] * 100
+            sample["sample_start"] = struct.unpack(">I", file.read(4))[0]
+            sample["loop_start"] = struct.unpack(">I", file.read(4))[0]
+            sample["sample_end"] = struct.unpack(">I", file.read(4))[0]
+            sample["sample_offset"] = 0
+            sample["sample_delay"] = (sample["sample_start"] % 16)
+            for j in range(len(samples)):
+                if sample["sample_end"] == samples[j]["sample_end"]:
+                    if sample["sample_start"] < samples[j]["sample_start"]:
+                        sample["sample_offset"] = 0
+                        samples[j]["sample_offset"] = samples[j]["sample_start"] - sample["sample_start"]
+                        samples[j]["sample_start"] -= samples[j]["sample_offset"]
+                        sample["sample_delay"] = sample["sample_start"] % 16
+                    elif sample["sample_start"] > samples[j]["sample_start"]:
+                        sample["sample_offset"] = sample["sample_start"] - samples[j]["sample_start"]
+                        sample["sample_start"] -= sample["sample_offset"]
+                        sample["sample_delay"] = samples[j]["sample_start"] % 16
+            sample["sample_trim"] = 0
+            samples.append(sample)
+            
     return samples
 
 
@@ -298,7 +379,7 @@ def loop_unroll_reverse(sample, pcm_data, loop_start, end_sample):
     return new_sample_end, unrolled_pcm_data
 
 
-def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll_flag, header):
+def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll_flag, header, width):
     name_whitelisted_characters = r'[^a-zA-Z0-9_]'
 
     print("=[multisample samples]==================")
@@ -391,7 +472,10 @@ def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll
                 #inst_chunk = create_instrument_chunk(sample['root_key'], 0, 0, low_key, high_key, 0, 127)
 
             wav_loop_type = loop_type_to_wav_type(sample['loop_type'])
-            framerate = header["sample_rate"]
+            if width == 8:
+                framerate = header["sample_rate"]
+            else:
+                framerate = sample["sample_rate"]
             smpl_chunk = None
 
             #if loop_unroll_flag and (samples[sample_id_prep]'loop_type_str'] == "pingpong" or samples[sample_id_prep]'loop_type_str'] == "reverse"):
@@ -467,8 +551,7 @@ def write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll
             #sfz_content_la += "\n"
 
         sfz_filename = f"{multisample_id}-{multisample_name_compact}.sfz"
-        if platform.system() != "Windows":
-            sfz_filename = sfz_filename.replace("/",":")
+        sfz_filename = sfz_filename.replace("/","_")
         #sfz_filename_la = f"{multisample_id}-{multisample_name_compact}_la.sfz"
         with open(sfz_filename, 'w') as sfz_file:
             sfz_file.write(sfz_content)
@@ -499,7 +582,7 @@ def add_chunk(filename, chunk):
 def main(scrambled_rom_file, loop_unroll=False):
     output_filename = scrambled_rom_file + ".descrambled.bin"
     if not os.path.exists(output_filename):
-        descrambled_rom = descramble.descramble(scrambled_rom_file)
+        descrambled_rom, width = descramble.descramble(scrambled_rom_file)
         with open(output_filename, 'wb') as file:
             file.write(descrambled_rom)
 
@@ -508,23 +591,26 @@ def main(scrambled_rom_file, loop_unroll=False):
     with open(output_filename, "rb") as file:
         for i in range(1):
             print("-[Header Block " + str(i) + "]--------------------------")
-            header = read_header(i, file)
+            header = read_header(i, file, width)
             print(json.dumps(header, indent=4, sort_keys=True))
-        header = read_header(0, file)
+        header = read_header(0, file, width)
 
         print("---------------------------")
 
-        all_exponents = read_all_exponents(8, BLOCK_SIZE, file)
-        samples = read_sample_table(file, header["sample_table_position"], header)
-        multisamples = read_multisamples_table(file, header["multisample_table_position"], header)
-#        print(json.dumps(multisamples, indent=4, sort_keys=True))
+        if width == 8:
+            all_exponents = read_all_exponents(8, BLOCK_SIZE, file)
+        else:
+            all_exponents = read_all_exponents(32, BLOCK_SIZE, file)
+        samples = read_sample_table(file, header["sample_table_position"], header, width)
+        multisamples = read_multisamples_table(file, header["multisample_table_position"], header, width)
+        print(json.dumps(multisamples, indent=4, sort_keys=True))
         #samples = decorate_samples_with_multisample_name(multisamples, samples)
-#        print(json.dumps(samples, indent=4, sort_keys=True))
-        write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll, header)
+        print(json.dumps(samples, indent=4, sort_keys=True))
+        write_samples_to_pcm(file, multisamples, samples, all_exponents, loop_unroll, header, width)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract waveforms and SFZ files from an SR-JV80 card ROM image")
+    parser = argparse.ArgumentParser(description="Extract waveforms and SFZ files from an SR-JV80/SRX card ROM image")
     parser.add_argument("filename", type=str, help="The name of the file to process")
     parser.add_argument("--loopunroll", action="store_true", help="Unroll pingpong loops as forward loops")
     args = parser.parse_args()

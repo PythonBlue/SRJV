@@ -69,4 +69,4 @@ def descramble(filename):
             tmp = descramble_data8(buf[i])
             outbuf[addr] = tmp
 
-    return outbuf
+    return outbuf, width
