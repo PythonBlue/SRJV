@@ -398,19 +398,24 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
     clip = False
     clipbuf = []
     for i in range(int(pwavs / bitRate * 8)):
-        if bitRate != 24 and bitRate != 32:
-            print("Error: unsupported bitrate of input!")
-            return
-        if bitRate == 24:
+        if bitRate == 16:
             inread = int.from_bytes(pwav1.read(3), "little")
             if inread >= 1 << 23:
                 inread -= (1 << 24)
             inbuf.append(inread)
-        else:
+        elif bitRate == 24:
+            inread = int.from_bytes(pwav1.read(3), "little")
+            if inread >= 1 << 23:
+                inread -= (1 << 24)
+            inbuf.append(inread)
+        elif bitRate == 32:
             inread = int.from_bytes(pwav1.read(4), "little")
             if inread >= 1 << 31:
                 inread -= (1 << 32)
             inbuf.append(inread)
+        else:
+            print("Error: unsupported bitrate of input!")
+            return
     for i in range(len(inbuf)):
         if i == 0:
             midbuf.append(round(inbuf[i]))
@@ -443,7 +448,7 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
     audioFile = wav.read()
     wav.seek(0)
     bitRate = audioFile[34]
-    if bitRate != 24 and bitRate != 32:
+    if bitRate != 16 and bitRate != 24 and bitRate != 32:
         print("Error: unsupported bitrate of input!")
         return
     dataChk = audioFile.find(b'data')
@@ -475,10 +480,12 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
     for i in range(sampleCount):
         End1 = int.from_bytes(wav.read(1), "big")
         End2 = int.from_bytes(wav.read(1), "big")
-        End3 = int.from_bytes(wav.read(1), "big")
-        Endian = (End3 << 16) + (End2 << 8) + End1
+        Endian = (End2 << 8) + End1
+        End3 = 0
         End4 = 0
         if bitRate > 16:
+            End3 = int.from_bytes(wav.read(1), "big")
+            Endian = (End3 << 16) + (End2 << 8) + End1
             if bitRate > 24:
                 End4 = int.from_bytes(wav.read(1), "big")
                 Endian = (End4 << 24) + (End3 << 16) + (End2 << 8) + End1
@@ -493,13 +500,15 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
         elif smplEnd + i < sampleCount:
             End1 = int.from_bytes(wav.read(1), "big")
             End2 = int.from_bytes(wav.read(1), "big")
-            End3 = int.from_bytes(wav.read(1), "big")
-            Endian = (End3 << 16) + (End2 << 8) + End1
+            Endian = (End2 << 8) + End1
+            End3 = 0
             End4 = 0
             if bitRate > 16:
+                End3 = int.from_bytes(wav.read(1), "big")
+                Endian = (End3 << 16) + (End2 << 8) + End1
                 if bitRate > 24:
                     End4 = int.from_bytes(wav.read(1), "big")
-                    Endian = (End4 << 16) + (End3 << 16) + (End2 << 8) + End1
+                    Endian = (End4 << 24) + (End3 << 16) + (End2 << 8) + End1
             if Endian >= 1 << (bitRate - 1):
                 Endian -= 1 << bitRate
             wavSamplesPrep.append(Endian)
@@ -507,8 +516,14 @@ def Encode(fname, loopType, smplLoop, smplEnd, VerboseMode):
             wavSamplesPrep.append(wavSamplesPrep[smplLoop + i - 1])
     sampleCount = len(wavSamplesPrep)
     prevDelta = 0
+    Brighten = 1.0
+    midBuf = []
+    midBuf2 = []
     for i in range(sampleCount):
-        wavSamples.append(wavSamplesPrep[i] >> (bitRate - 17))
+        if bitRate == 16:
+            wavSamples.append(wavSamplesPrep[i] << 1)
+        else:
+            wavSamples.append(wavSamplesPrep[i] >> (bitRate - 17))
         
     DPCMEncode(coefs, deltas, wavSamples, 0, sampleStart, loopType, smplLoop, smplEnd, VerboseMode)
     foldersplit = "/"

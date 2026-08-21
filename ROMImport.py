@@ -23,7 +23,7 @@ def run(tmpDir, PatchImport, VerboseMode):
     template.seek(56)
     template.write('{0:02d}'.format(today.day).encode('utf-8'))
     template.seek(64)
-    romSR = 32000
+    romSR = int.from_bytes(template.read(2), "big") * 100
     
     template.seek(32768)
     templateCoef.seek(1024)
@@ -114,7 +114,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                     sampleRate.append(int.from_bytes(audioFile.read(4), "little"))
                     audioFile.seek(chnkOff + 20)
                     rootKey.append(int.from_bytes(audioFile.read(4), "little"))
-                    fineTuneResult = 1024 + round(float(int.from_bytes(audioFile.read(4), "little")) * 1024 / 100)
+                    fineTuneResult = 1024 + round(float(int.from_bytes(audioFile.read(4), "little") / 4294967296) * 1024 / 100)
                     smplVol.append(127)
                     if chnkOff + 64 < len(audioRead):
                         audioFile.seek(chnkOff + 48)
@@ -124,16 +124,15 @@ def run(tmpDir, PatchImport, VerboseMode):
                         smplLoopType.append(int.from_bytes(audioFile.read(4), "little"))
                         smplLoop.append(int.from_bytes(audioFile.read(4), "little"))
                         smplEnd.append(int.from_bytes(audioFile.read(4), "little"))
-                        loopTuneResult = 1024 + round(float(int.from_bytes(audioFile.read(4), "little")) * 1024 / 100)
+                        loopTuneResult = 1024 + round(float(int.from_bytes(audioFile.read(4), "little") / 4294967296) * 1024 / 100)
                     else:
-                        smplLoopType.append(0)
                         buff = int(dataSz / bitRate)
                         smplStart.append(template.tell())
                         smplDelay.append(0)
                         smplStartN.append(0)
-                        smplLoop.append(buff - 2)
-                        smplEnd.append(buff - 1)
                         smplLoopType.append(2)
+                        smplLoop.append(buff - 1)
+                        smplEnd.append(buff)
                         loopTuneResult = 1024
                     fineTune.append(fineTuneResult)
                     loopTune.append(loopTuneResult)
@@ -160,8 +159,15 @@ def run(tmpDir, PatchImport, VerboseMode):
                         sfzText = "<region>" + ("   \n" + sfzFile.read()).split("<region>",1)[1]
                         sfzFile.close()
                         RegionList = sfzText.split("<region>")
+                        repeatSample = 0
                         if len(RegionList) > 0:
                             for i in range(min(16, len(RegionList))):
+                                if "=" + filename in RegionList[i] and i > 1 and  "=" + filename in RegionList[i-2]:
+                                    repeatSample += 2
+                                    i = min(repeatSample+i, len(RegionList)-2)
+                                elif "=" + filename in RegionList[i] and i > 0 and  "=" + filename in RegionList[i-1]:
+                                    repeatSample += 1
+                                    i = min(repeatSample+i, len(RegionList)-1)
                                 if "=" + filename in RegionList[i] and dataChunkValid == False:
                                     if sampleFound[sampleFinder] == True:
                                         continue
@@ -216,6 +222,8 @@ def run(tmpDir, PatchImport, VerboseMode):
                                         smplVolPrep = (round(float(max(0,min(100,float(smplVolFind[0])))) * 1.27))
                         
                                     smplTuneFind = re.findall('\ntune=(-?\\d+.?\\d*)', RegionList[i])
+                                    if len(smplTuneFind) == 0:
+                                        smplTuneFind = re.findall(' tune=(-?\\d+.?\\d*)', RegionList[i])
                                     if len(smplTuneFind) > 0:
                                         fineTuneResult = 1024 + round(float(smplTuneFind[0]) * 1024 / 100)
                                         
@@ -241,15 +249,15 @@ def run(tmpDir, PatchImport, VerboseMode):
                                             
                                     duped = False
 
-                                    compare1 = [template.tell(), smplStartPrep, smplLoopTypePrep, rootKeyPrep, smplLoopPrep, smplEndPrep, smplVolPrep, fineTuneResult, loopTuneResult]
+                                    compare1 = [smplStartPrep, smplLoopTypePrep, rootKeyPrep, smplLoopPrep, smplEndPrep, smplVolPrep, fineTuneResult, loopTuneResult]
 
                                     for k in range(sampleCount + 1):
-                                        compare2 = [smplStart[k], smplStartN[k], smplLoopType[k], rootKey[k], smplLoop[k], smplEnd[k], smplVol[k], fineTune[k], loopTune[k]]
+                                        compare2 = [smplStartN[k], smplLoopType[k], rootKey[k], smplLoop[k], smplEnd[k], smplVol[k], fineTune[k], loopTune[k]]
                                         if compare1 == compare2:
                                             duped = True
 
-                                    if duped == True:
-                                        continue
+                                    #if duped == True:
+                                        #continue
                                     
                                     sampleCount += 1
                                     dataChunkList.append(dataChunkValid)
@@ -389,9 +397,11 @@ def run(tmpDir, PatchImport, VerboseMode):
                                     sampleNum[i] = j
                                     
         
-                    sampleHi = re.findall("hikey=[0-9]+",RegionList[i + 1])
-                    if len(sampleHi) > 0:
-                        sampleHiInt[i] = int(((sampleHi[0]).split("="))[1])
+                    sampleHi = re.findall("hikey=([0-9]+)",RegionList[i + 1])
+                    if len(sampleHi) >= 0 and i < len(RegionList) - 1:
+                        sampleHiInt[i] = int(sampleHi[0])
+                    elif len(sampleHi) >= 0 and i == len(RegionList) - 1:
+                        sampleHiInt[i] = 127
             
 
             multiTable.write(multiName.encode("ascii"))
